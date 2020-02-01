@@ -50,7 +50,6 @@
 #include <FS.h>									// ESP8266 Specific
 #include <WiFiUdp.h>
 #include <pins_arduino.h>
-#include <gBase64.h>							// https://github.com/adamvr/arduino-base64 (changed the name)
 
 // Local include files
 #include "loraModem.h"
@@ -1125,6 +1124,7 @@ void setup() {
 	
 	// Pins are defined and set in loraModem.h
     pinMode(pins.ss, OUTPUT);
+	digitalWrite(pins.ss, HIGH);
 	pinMode(pins.rst, OUTPUT);
     pinMode(pins.dio0, INPUT);								// This pin is interrupt
 	pinMode(pins.dio1, INPUT);								// This pin is interrupt

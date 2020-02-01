@@ -18,6 +18,8 @@
 // This file contains the LoRa filesystem specific code
 
 
+#define LOGFILEREC 10
+#define LOGFILEMAX 10
 // ============================================================================
 // LORA SPIFFS FILESYSTEM FUNCTIONS
 //

@@ -21,7 +21,7 @@
 //
 // ------------------------------------------------------------------------------------
 
-
+#include <stdint.h>
 // ----------------------------------------
 // Used by REG_PAYLOAD_LENGTH to set receive payload length
 #define PAYLOAD_LENGTH              0x40		// 64 bytes
@@ -238,11 +238,21 @@ struct pins {
 #else
 // ----------------------------------------------------------------------------
 // Use your own pin definitions, and comment #error line below
-// MISO 12 / D6
-// MOSI 13 / D7
-// CLK  14 / D5
-// SS   16 / D0
-#error "Pin Definitions _PIN_OUT must be 1(HALLARD) or 2 (COMRESULT)"
+struct pins {
+	uint8_t dio0=15;		// GPIO26 / Dio0 used for one frequency and one SF
+	uint8_t dio1=15;		// GPIO26 / Used for CAD, may or not be shared with DIO0
+	uint8_t dio2=15;		// GPIO26 / Used for frequency hopping, don't care
+	uint8_t ss=16;			// GPIO18 / Dx. Select pin connected to GPIO18
+	uint8_t rst=4;			// GPIO0  / D3. Reset pin not used	
+} pins;
+#define SCK 14
+#define MISO 12
+#define MOSI 13
+#define RST 4
+#define SS 16
+//#define GPS_RX 15
+//#define GPS_TX 12
+// #error "Pin Definitions _PIN_OUT must be 1(HALLARD) or 2 (COMRESULT)"
 #endif
 
 // STATR contains the statictis that are kept by message. 

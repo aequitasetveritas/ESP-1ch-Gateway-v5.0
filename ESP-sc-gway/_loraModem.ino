@@ -965,10 +965,10 @@ void initLoraModem()
 
 #else
 	// Reset the transceiver chip with a pulse of 10 mSec
-	digitalWrite(pins.rst, HIGH);
-	delayMicroseconds(10000);
+	digitalWrite(pins.ss, HIGH);
     digitalWrite(pins.rst, LOW);
 	delayMicroseconds(10000);
+	digitalWrite(pins.rst, HIGH);
 #endif
 	// 2. Set radio to sleep
 	opmode(OPMODE_SLEEP);										// set register 0x01 to 0x00

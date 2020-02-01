@@ -43,7 +43,7 @@
 
 // Define the LoRa Frequncy band that is used. TTN Supported values are 915MHz, 868MHz and 433MHz.
 // So supported values are: 433 868 915
-#define _LFREQ 868
+#define _LFREQ 915
 
 // The spreading factor is the most important parameter to set for a single channel
 // gateway. It specifies the speed/datarate in which the gateway and node communicate.
@@ -52,7 +52,7 @@
 // This parameters contains the default value of SF, the actual version can be set with
 // the webserver and it will be stored in SPIFF
 // NOTE: The frequency is set in the loraModem.h file and is default 868.100000 MHz.
-#define _SPREADING SF9
+#define _SPREADING SF12
 
 // Channel Activity Detection
 // This function will scan for valid LoRa headers and determine the Spreading 
@@ -61,7 +61,7 @@
 // continuous listen mode.
 // Using this function means that we HAVE to use more dio pins on the RFM95/sx1276
 // device and also connect enable dio1 to detect this state. 
-#define _CAD 1
+#define _CAD 0
 
 // Definitions for the admin webserver.
 // A_SERVER determines whether or not the admin webpage is included in the sketch.
@@ -76,7 +76,7 @@
 // Bonjour is included in iTunes (which is free) and OTA is recommended to install 
 // the firmware on your router witout having to be really close to the gateway and 
 // connect with USB.
-#define A_OTA 1
+#define A_OTA 0
 
 // We support a few pin-out configurations out-of-the-box: HALLARD, COMPRESULT and TTGO ESP32.
 // If you use one of these two, just set the parameter to the right value.
@@ -87,7 +87,7 @@
 //	4: ESP32 TTGO pinning (should work for 433 and OLED too).
 //	5: ESP32 TTGO EU433 MHz with OLED
 //	6: Other, define your own in loraModem.h
-#define _PIN_OUT 1
+#define _PIN_OUT 6
 
 // Gather statistics on sensor and Wifi status
 // 0= No statistics
@@ -110,15 +110,15 @@
 // NOTE: If your node has only one frequency enabled and one SF, you must set this to 1
 //		in order to receive downlink messages
 // NOTE: In all other cases, value 0 works for most gateways with CAD enabled
-#define _STRICT_1CH	0
+#define _STRICT_1CH	1
 
 // Allows configuration through WifiManager AP setup. Must be 0 or 1					
 #define WIFIMANAGER 0
 
 // Define the name of the accesspoint if the gateway is in accesspoint mode (is
 // getting WiFi SSID and password using WiFiManager)
-#define AP_NAME "YourName"
-#define AP_PASSWD "YourPassword"
+#define AP_NAME "AgrotoolsGW"
+#define AP_PASSWD "agrotools"
 
 // This section defines whether we use the gateway as a repeater
 // For his, we use another output channle as the channel (default==0) we are 
@@ -135,7 +135,7 @@
 // OLED==0; No OLED display connected
 // OLED==1; 0.9 Oled Screen based on SSD1306
 // OLED==2;	1"3 Oled screens for Wemos, 128x64 SH1106
-#define OLED 2
+#define OLED 0
 
 
 // Define whether we want to manage the gateway over UDP (next to management 
@@ -155,7 +155,7 @@
 // rather have new records/line of statistics than very old.
 // Of course we must store enough records to make the filesystem work
 //
-#define STAT_LOG 1
+#define STAT_LOG 0
 
 
 // Name of he configfile in SPIFFs	filesystem
@@ -176,7 +176,7 @@
 // MQTT definitions, these settings should be standard for TTN
 // and need not changing
 #define _TTNPORT 1700						// Standard port for TTN
-#define _TTNSERVER "router.eu.thethings.network"
+#define _TTNSERVER "192.168.88.16"
 
 // If you have a second back-end server defined such as Semtech or loriot.io
 // your can define _THINGPORT and _THINGSERVER with your own value.
@@ -260,7 +260,7 @@ struct wpas {
 //
 wpas wpa[] = {
 	{ "" , "" },							// Reserved for WiFi Manager
-	{ "fire", "water" },
+	{ "que_miras_mi_wifi", "1008572055" },
 	{ "ape", "beer" }
 };
 

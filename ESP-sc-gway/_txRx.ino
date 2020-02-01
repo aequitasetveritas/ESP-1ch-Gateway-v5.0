@@ -19,7 +19,7 @@
 // and transmit packages/messages.
 // ========================================================================================
 
-
+#include <Base64.h>
 
 // ----------------------------------------------------------------------------
 // DOWN DOWN DOWN DOWN DOWN DOWN DOWN DOWN DOWN DOWN DOWN DOWN DOWN DOWN DOWN 
@@ -132,8 +132,8 @@ int sendPacket(uint8_t *buf, uint8_t length)
 	LoraDown.sfTx = atoi(datr+2);						// Convert "SF9BW125" or what is received from gateway to number
 	LoraDown.iiq = (ipol? 0x40: 0x27);					// if ipol==true 0x40 else 0x27
 	LoraDown.crc = 0x00;								// switch CRC off for TX
-	LoraDown.payLength = base64_dec_len((char *) data, strlen(data));// Length of the Payload data	
-	base64_decode((char *) payLoad, (char *) data, strlen(data));	// Fill payload w decoded message
+	LoraDown.payLength = Base64.decodedLength((char *) data, strlen(data));// Length of the Payload data	
+	Base64.decode((char *) payLoad, (char *) data, strlen(data));	// Fill payload w decoded message
 
 	// Compute wait time in microseconds
 	uint32_t w = (uint32_t) (LoraDown.tmst - micros());	// Wait Time compute
@@ -440,7 +440,7 @@ int buildPacket(uint32_t tmst, uint8_t *buff_up, struct LoraUp LoraUp, bool inte
 	// XXX Base64 library is nopad. So we may have to add padding characters until
 	// 	message Length is multiple of 4!
 	// Encode message with messageLength into b64
-	int encodedLen = base64_enc_len(messageLength);		// max 341
+	int encodedLen = Base64.encodedLength(messageLength);		// max 341
 #if DUSB>=1
 	if ((debug>=1) && (encodedLen>255) && ( pdebug & P_RADIO )) {
 		Serial.print(F("R buildPacket:: b64 err, len="));
@@ -449,7 +449,7 @@ int buildPacket(uint32_t tmst, uint8_t *buff_up, struct LoraUp LoraUp, bool inte
 		return(-1);
 	}
 #endif // DUSB
-	base64_encode(b64, (char *) message, messageLength);// max 341
+	Base64.encode(b64, (char *) message, messageLength);// max 341
 	// start composing datagram with the header 
 	uint8_t token_h = (uint8_t)rand(); 					// random token
 	uint8_t token_l = (uint8_t)rand(); 					// random token
@@ -542,8 +542,8 @@ int buildPacket(uint32_t tmst, uint8_t *buff_up, struct LoraUp LoraUp, bool inte
 	buff_index += 9;
 
 	// Use gBase64 library to fill in the data string
-	encodedLen = base64_enc_len(messageLength);			// max 341
-	j = base64_encode((char *)(buff_up + buff_index), (char *) message, messageLength);
+	encodedLen = Base64.encodedLength(messageLength);			// max 341
+	j = Base64.encode((char *)(buff_up + buff_index), (char *) message, messageLength);
 
 	buff_index += j;
 	buff_up[buff_index] = '"';
