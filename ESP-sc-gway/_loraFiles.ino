@@ -17,6 +17,7 @@
 //
 // This file contains the LoRa filesystem specific code
 
+#include "asi-src/src/asi.h"
 
 #define LOGFILEREC 10
 #define LOGFILEMAX 10
@@ -71,7 +72,7 @@ int readConfig(const char *fn, struct espGwayConfig *c) {
 		Serial.print(fn);
 		Serial.println(F(" does not exist .. Formatting"));
 #endif
-		SPIFFS.format();
+		// SPIFFS.format();
 		initConfig(c);
 		return(-1);
 	}
@@ -223,10 +224,10 @@ int writeGwayCfg(const char *fn) {
 	gwayConfig.ssid = WiFi.SSID();
 	gwayConfig.pass = WiFi.psk();						// XXX We should find a way to store the password too
 	gwayConfig.ch = ifreq;								// Frequency Index
-	gwayConfig.sf = (uint8_t) sf;						// Spreading Factor
+	gwayConfig.sf = (uint8_t) global_sf;						// Spreading Factor
 	gwayConfig.debug = debug;
 	gwayConfig.pdebug = pdebug;
-	gwayConfig.cad = _cad;
+	gwayConfig.cad = cadGet();
 	gwayConfig.hop = _hop;
 #if GATEWAYNODE==1
 	gwayConfig.fcnt = frameCount;
@@ -247,7 +248,7 @@ int writeConfig(const char *fn, struct espGwayConfig *c) {
 
 	if (!SPIFFS.exists(fn)) {
 		Serial.print("WARNING:: writeConfig, file not exists, formatting ");
-		SPIFFS.format();
+		//SPIFFS.format();
 		initConfig(c);		// XXX make all initial declarations here if config vars need to have a value
 		Serial.println(fn);
 	}

@@ -75,7 +75,9 @@ struct espGwayConfig {
 	
 	String ssid;				// SSID of the last connected WiFi Network
 	String pass;				// Password of WiFi network
-} gwayConfig;
+};
+
+extern struct espGwayConfig gwayConfig;
 
 // Define a log record to be written to the log file
 // Keep logfiles SHORT in name! to save memory

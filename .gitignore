@@ -2,3 +2,5 @@
 .pio/*
 libraries/*
 libraries/*
+ESP-sc-gway/asi-src/interface/build
+ESP-sc-gway/asi-src/interface/node_modules

@@ -1,0 +1,8 @@
+{
+    "modo_lorawan":true,
+    "frecuencia":903900000,
+    "sf":12,
+    "bw":125,
+    "cad":false,
+    "backbone":1
+}

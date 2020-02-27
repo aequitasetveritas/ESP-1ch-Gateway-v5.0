@@ -21,24 +21,27 @@
 
 #include <Base64.h>
 #include <AES-128_V10.h>
+#include "_loraModem.h"
+#include "settings.h"
 
 void fakeLoraWanWrap(uint8_t *message, uint8_t *messageLen)
 {
 	uint8_t mhdr = 0x40; // Propietary Unconfirmed data up
 	uint8_t fhdr[7];
 	// Address
-	fhdr[0] = message[13]; 
+	fhdr[0] = message[13];
 	fhdr[1] = message[12]; // Los tres ultimos bytes de la direccion
 	fhdr[2] = message[11];
-	fhdr[3] = message[2];  // El primer byte de la tipo
+	fhdr[3] = message[2]; // El primer byte de la tipo
 	// FCtrl Uplink
 	fhdr[4] = 0x00;
 	// FCnt
 	fhdr[5] = message[14];
 	fhdr[6] = message[15];
 
-	uint16_t FCount = (((uint16_t) fhdr[6])<<8) | ((uint16_t) fhdr[5]);
-	Serial.print("FCount "); Serial.println(FCount);
+	uint16_t FCount = (((uint16_t)fhdr[6]) << 8) | ((uint16_t)fhdr[5]);
+	Serial.print("FCount ");
+	Serial.println(FCount);
 	uint8_t fport = 0x10;
 	uint8_t mic[4] = {0x00, 0x00, 0x00, 0x00};
 
@@ -53,14 +56,13 @@ void fakeLoraWanWrap(uint8_t *message, uint8_t *messageLen)
 	DevAddr[3] = message[13];
 	// Encryptacion del payload FRMPayload usando la AppSKey
 	uint8_t CodeLength = encodePacket((uint8_t *)(message), *messageLen, FCount, DevAddr, AppSKey, 0);
-	
+
 	temp_buffer[0] = mhdr;
 	memcpy(&temp_buffer[1], fhdr, 7);
 	temp_buffer[8] = fport;
 	memcpy(&temp_buffer[9], message, CodeLength); // Copio el FRMPayload encriptado
 
 	(*messageLen) = CodeLength + 9;
-
 
 	// Calculo MIC con la NwkSKey y DevAdr. micPacket agrega el mic al final
 	(*messageLen) += micPacket((uint8_t *)(temp_buffer), *messageLen, FCount, DevAddr, NwkSKey, 0);
@@ -146,7 +148,7 @@ int sendPacket(uint8_t *buf, uint8_t length)
 	// {"txpk":{"codr":"4/5","data":"YCkEAgIABQABGmIwYX/kSn4Y","freq":868.1,"ipol":true,"modu":"LORA","powe":14,"rfch":0,"size":18,"tmst":1890991792,"datr":"SF7BW125"}}
 
 	// Used in the protocol of Gateway:
-	JsonObject root = jsonBuffer.to<JsonObject>();
+	JsonObject root = jsonBuffer.as<JsonObject>();
 	const char *data = root["txpk"]["data"]; // Downstream Payload
 	uint8_t psize = root["txpk"]["size"];
 	bool ipol = root["txpk"]["ipol"];
@@ -175,7 +177,7 @@ int sendPacket(uint8_t *buf, uint8_t length)
 #endif
 	}
 	else
-	{ // There is data!
+	{ // There is no data!
 #if DUSB >= 1
 		if ((debug > 0) && (pdebug & P_TX))
 		{
@@ -187,7 +189,20 @@ int sendPacket(uint8_t *buf, uint8_t length)
 		return (-1);
 	}
 
-	LoraDown.sfTx = atoi(datr + 2);										   // Convert "SF9BW125" or what is received from gateway to number
+	LoraDown.sfTx = atoi(datr + 2); // Convert "SF9BW125" or what is received from gateway to number
+	if (datr[3] == 'B')
+	{
+		LoraDown.bw = atoi(datr + 5);
+	}
+	else if (datr[4] == 'B')
+	{
+		LoraDown.bw = atoi(datr + 6);
+	}
+	else
+	{
+		LoraDown.bw = 125;
+	}
+
 	LoraDown.iiq = (ipol ? 0x40 : 0x27);								   // if ipol==true 0x40 else 0x27
 	LoraDown.crc = 0x00;												   // switch CRC off for TX
 	LoraDown.payLength = Base64.decodedLength((char *)data, strlen(data)); // Length of the Payload data
@@ -689,7 +704,7 @@ int buildPacket(uint32_t tmst, uint8_t *buff_up, struct LoraUp LoraUp, bool inte
 	}
 #endif
 	buff_index += j;
-	ftoa((double)freq / 1000000, cfreq, 6); // XXX This can be done better
+	ftoa(((double)freq) / 1000000.0, cfreq, 6); // XXX This can be done better
 	j = snprintf((char *)(buff_up + buff_index), TX_BUFF_SIZE - buff_index, ",\"chan\":%1u,\"rfch\":%1u,\"freq\":%s", 0, 0, cfreq);
 	buff_index += j;
 	memcpy((void *)(buff_up + buff_index), (void *)",\"stat\":1", 9);
@@ -809,6 +824,7 @@ int receivePacket()
 	uint32_t tmst = (uint32_t)micros(); // Only microseconds, rollover in 5X minutes
 	//lastTmst = tmst;								// Following/according to spec
 
+	LoraUp.rx_local_timestamp = tmst;
 	// Handle the physical data read from LoraUp
 	if (LoraUp.payLength > 0)
 	{
@@ -830,10 +846,21 @@ int receivePacket()
 		// If possible, USB traffic should be left out of interrupt routines
 		// rxpk PUSH_DATA received from node is rxpk (*2, par. 3.2)
 #ifdef _TTNSERVER
-		if (!sendUdp(ttnServer, _TTNPORT, buff_up, build_index))
+
+		//#Punto de envio
+		S_PROTOCOL proto = settings_protocol();
+		if (proto == MQTTBRIDGE_TCP)
 		{
-			return (-1); // received a message
+			mqtt_sendUplink(LoraUp);
 		}
+		else if (proto == SEMTECH_PF_UDP)
+		{
+			if (!sendUdp(ttnServer, _TTNPORT, buff_up, build_index))
+			{
+				return (-1); // received a message
+			}
+		}
+
 		yield();
 #endif
 		// Use our own defined server or a second well kon server

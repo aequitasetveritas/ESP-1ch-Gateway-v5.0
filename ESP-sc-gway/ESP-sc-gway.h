@@ -20,6 +20,10 @@
 // too much code compiled and loaded on your ESP8266.
 //
 // ----------------------------------------------------------------------------------------
+#ifndef ESP_SC_GW_H
+#define ESP_SC_GW_H
+
+#include "utils.h"
 
 #define VERSION "V.5.3.3.H; 180825a"
 
@@ -27,7 +31,7 @@
 // Also this is the initial value of debug parameter. 
 // The value can be changed using the admin webserver
 // For operational use, set initial DEBUG vaulue 0
-#define DEBUG 1
+#define DEBUG 0
 
 // Debug message will be put on Serial is this one is set.
 // If set to 0, not USB Serial prints are done
@@ -66,7 +70,7 @@
 // Definitions for the admin webserver.
 // A_SERVER determines whether or not the admin webpage is included in the sketch.
 // Normally, leave it in!
-#define A_SERVER 1				// Define local WebServer only if this define is set
+#define A_SERVER 0				// Define local WebServer only if this define is set
 #define A_REFRESH 1				// Allow the webserver refresh or not?
 #define A_SERVERPORT 80			// Local webserver port (normally 80)
 #define A_MAXBUFSIZE 192		// Must be larger than 128, but small enough to work
@@ -110,7 +114,7 @@
 // NOTE: If your node has only one frequency enabled and one SF, you must set this to 1
 //		in order to receive downlink messages
 // NOTE: In all other cases, value 0 works for most gateways with CAD enabled
-#define _STRICT_1CH	1
+#define _STRICT_1CH	0
 
 // Allows configuration through WifiManager AP setup. Must be 0 or 1					
 #define WIFIMANAGER 0
@@ -262,11 +266,7 @@ struct wpas {
 // Note: DO NOT use the first and the last line of the stucture, these should be empty strings and
 //	the first line in te struct is reserved for WifiManager.
 //
-wpas wpa[] = {
-	{ "" , "" },							// Reserved for WiFi Manager
-	{ "que_miras_mi_wifi", "1008572055" },
-	{ "ape", "beer" }
-};
+extern wpas wpa[];
 
 // For asserting and testing the following defines are used.
 //
@@ -274,4 +274,6 @@ wpas wpa[] = {
 #define ASSERT(cond) if(!(cond)) gway_failed(__FILE__, __LINE__)
 #else
 #define ASSERT(cond) /**/
+#endif
+
 #endif

@@ -132,7 +132,7 @@ int WlanReadWpa() {
 	
 	readConfig( CONFIGFILE, &gwayConfig);
 
-	if (gwayConfig.sf != (uint8_t) 0) sf = (sf_t) gwayConfig.sf;
+	if (gwayConfig.sf != (uint8_t) 0) global_sf = (sf_t) gwayConfig.sf;
 	ifreq = gwayConfig.ch;
 	debug = gwayConfig.debug;
 	pdebug = gwayConfig.pdebug;

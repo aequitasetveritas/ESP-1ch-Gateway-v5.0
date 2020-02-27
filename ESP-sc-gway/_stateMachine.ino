@@ -20,6 +20,7 @@
 // ========================================================================================
 //
 
+#include "_loraModem.h"
 
 // ----------------------------------------------------------------------------
 // stateMachine handler of the state machine.
@@ -125,7 +126,7 @@ void stateMachine()
 			// Assume symbols in SF8 take twice the time of SF7
 			//
 			uint32_t doneWait = DONE_WAIT;			// Initial value
-			switch (sf) {
+			switch (global_sf) {
 				case SF7: 	break;
 				case SF8: 	doneWait *= 2;	break;
 				case SF9: 	doneWait *= 4;	break;
@@ -454,10 +455,10 @@ void stateMachine()
 			// If this is not SF12, increment the SF and try again
 			// We expect on other SF get CDDETD
 			//
-			if (((uint8_t)sf) < SF12) {
+			if (((uint8_t)global_sf) < SF12) {
 			
-				sf = (sf_t)((uint8_t)sf+1);				// Increment sf
-				setRate(sf, 0x04);						// Set SF with CRC==on
+				global_sf = (sf_t)((uint8_t)global_sf+1);				// Increment sf
+				setRate(global_sf, 0x04);						// Set SF with CRC==on
 				
 				// reset interrupt flags for CAD Done
 				_event=0;								// XXX 180324, when increasing SF loop, ws 0x00
@@ -473,7 +474,7 @@ void stateMachine()
 #if DUSB>=1
 				if (( debug>=2 ) && ( pdebug & P_CAD )) {
 					Serial.print(F("S_CAD:: CDONE, SF="));
-					Serial.println(sf);
+					Serial.println(global_sf);
 				}
 #endif
 			}
@@ -488,7 +489,7 @@ void stateMachine()
 				writeRegister(REG_IRQ_FLAGS, (uint8_t) 0xFF );	// or IRQ_LORA_CDDONE_MASK
 				
 				_state = S_SCAN;						// As soon as we reach SF12 do something
-				sf = SF7;
+				global_sf = SF7;
 				cadScanner();							// Which will reset SF to SF7
 
 #if DUSB>=1		
@@ -528,7 +529,7 @@ void stateMachine()
 			}
 #endif
 			_state = S_SCAN;
-			sf = SF7;
+			global_sf = SF7;
 			cadScanner();										// Scan and set SF7
 			
 			// Reset Interrupts
@@ -564,8 +565,8 @@ void stateMachine()
 					SerialStat(intr);
 				}
 #endif
-				if (_cad) {
-					sf = SF7;
+				if (cadGet()) {
+					global_sf = SF7;
 					_state = S_SCAN;
 					cadScanner();
 				}
@@ -666,9 +667,9 @@ void stateMachine()
 			
 			// Set the modem to receiving BEFORE going back to user space.
 			// 
-			if ((_cad) || (_hop)) {
+			if ((cadGet()) || (_hop)) {
 				_state = S_SCAN;
-				sf = SF7;
+				global_sf = SF7;
 				cadScanner();
 			}
 			else {
@@ -700,7 +701,7 @@ void stateMachine()
 			// If RXTOUT we put the modem in cad state and reset to SF7
 			// If a timeout occurs here we reset the cadscanner
 			//
-			if ((_cad) || (_hop)) {
+			if ((cadGet()) || (_hop)) {
 				// Set the state to CAD scanning
 #if DUSB>=1
 				if (( debug>=2 ) && ( pdebug & P_RX )) {
@@ -708,7 +709,7 @@ void stateMachine()
 					SerialStat(intr);
 				}
 #endif
-				sf = SF7;
+				global_sf = SF7;
 				cadScanner();								// Start the scanner after RXTOUT
 				_state = S_SCAN;							// New state is scan
 
@@ -808,7 +809,8 @@ void stateMachine()
 			LoraDown.powe,
 			LoraDown.fff,
 			LoraDown.crc,
-			LoraDown.iiq
+			LoraDown.iiq,
+			LoraDown.bw
 		);
 		// After filling the buffer we only react on TXDONE interrupt
 		
@@ -846,10 +848,10 @@ void stateMachine()
 			}
 #endif
 			// After transmission reset to receiver
-			if ((_cad) || (_hop)) {									// XXX 26/02
+			if ((cadGet()) || (_hop)) {									// XXX 26/02
 				// Set the state to CAD scanning
 				_state = S_SCAN;
-				sf = SF7;
+				global_sf = SF7;
 				cadScanner();										// Start the scanner after TX cycle
 			}
 			else {
@@ -919,7 +921,7 @@ void stateMachine()
 			Serial.println(_state);	
 		}
 #endif
-		if ((_cad) || (_hop)) {
+		if ((cadGet()) || (_hop)) {
 #if DUSB>=1
 			if (debug>=0) {
 				Serial.println(F("default:: Unknown _state "));
@@ -927,7 +929,7 @@ void stateMachine()
 			}
 #endif
 			_state = S_SCAN;
-			sf = SF7;
+			global_sf = SF7;
 			cadScanner();								// Restart the state machine
 			_event=0;									
 		}
