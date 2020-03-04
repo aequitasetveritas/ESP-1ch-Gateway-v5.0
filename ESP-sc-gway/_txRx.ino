@@ -24,6 +24,8 @@
 #include "_loraModem.h"
 #include "settings.h"
 
+#include "macro_helpers.h"
+
 void fakeLoraWanWrap(uint8_t *message, uint8_t *messageLen)
 {
 	uint8_t mhdr = 0x40; // Propietary Unconfirmed data up
@@ -40,8 +42,8 @@ void fakeLoraWanWrap(uint8_t *message, uint8_t *messageLen)
 	fhdr[6] = message[15];
 
 	uint16_t FCount = (((uint16_t)fhdr[6]) << 8) | ((uint16_t)fhdr[5]);
-	Serial.print("FCount ");
-	Serial.println(FCount);
+	dbgp("FCount ");
+	dbgpl(FCount);
 	uint8_t fport = 0x10;
 	uint8_t mic[4] = {0x00, 0x00, 0x00, 0x00};
 
@@ -69,6 +71,7 @@ void fakeLoraWanWrap(uint8_t *message, uint8_t *messageLen)
 
 	// Copio temp_buffer en el buffer original.
 	memcpy(message, temp_buffer, *messageLen);
+
 }
 
 // ----------------------------------------------------------------------------
@@ -117,8 +120,8 @@ int sendPacket(uint8_t *buf, uint8_t length)
 #if DUSB >= 1
 	if (debug >= 2)
 	{
-		Serial.println((char *)buf);
-		Serial.print(F("<"));
+		dbgpl((char *)buf);
+		dbgp(F("<"));
 		Serial.flush();
 	}
 #endif
@@ -131,11 +134,11 @@ int sendPacket(uint8_t *buf, uint8_t length)
 #if DUSB >= 1
 		if ((debug >= 1) && (pdebug & P_TX))
 		{
-			Serial.print(F("T sendPacket:: ERROR Json Decode"));
+			dbgp(F("T sendPacket:: ERROR Json Decode"));
 			if (debug >= 2)
 			{
-				Serial.print(':');
-				Serial.println(bufPtr);
+				dbgp(':');
+				dbgpl(bufPtr);
 			}
 			Serial.flush();
 		}
@@ -169,8 +172,8 @@ int sendPacket(uint8_t *buf, uint8_t length)
 #if DUSB >= 1
 		if ((debug >= 2) && (pdebug & P_TX))
 		{
-			Serial.print(F("T data: "));
-			Serial.println((char *)data);
+			dbgp(F("T data: "));
+			dbgpl((char *)data);
 			if (debug >= 2)
 				Serial.flush();
 		}
@@ -181,7 +184,7 @@ int sendPacket(uint8_t *buf, uint8_t length)
 #if DUSB >= 1
 		if ((debug > 0) && (pdebug & P_TX))
 		{
-			Serial.println(F("T sendPacket:: ERROR: data is NULL"));
+			dbgpl(F("T sendPacket:: ERROR: data is NULL"));
 			if (debug >= 2)
 				Serial.flush();
 		}
@@ -245,55 +248,55 @@ int sendPacket(uint8_t *buf, uint8_t length)
 	if ((debug >= 1) && (pdebug & P_TX))
 	{
 
-		Serial.print(F("T LoraDown tmst="));
-		Serial.print(LoraDown.tmst);
-		//Serial.print(F(", w="));
-		//Serial.print(w);
+		dbgp(F("T LoraDown tmst="));
+		dbgp(LoraDown.tmst);
+		//dbgp(F(", w="));
+		//dbgp(w);
 
 		if (debug >= 2)
 		{
-			Serial.print(F(" Request:: "));
-			Serial.print(F(" tmst="));
-			Serial.print(LoraDown.tmst);
-			Serial.print(F(" wait="));
-			Serial.println(w);
+			dbgp(F(" Request:: "));
+			dbgp(F(" tmst="));
+			dbgp(LoraDown.tmst);
+			dbgp(F(" wait="));
+			dbgpl(w);
 
-			Serial.print(F(" strict="));
-			Serial.print(_STRICT_1CH);
-			Serial.print(F(" datr="));
-			Serial.println(datr);
-			Serial.print(F(" Rfreq="));
-			Serial.print(freq);
-			Serial.print(F(", Request="));
-			Serial.print(freq);
-			Serial.print(F(" ->"));
-			Serial.println(LoraDown.fff);
-			Serial.print(F(" sf  ="));
-			Serial.print(atoi(datr + 2));
-			Serial.print(F(" ->"));
-			Serial.println(LoraDown.sfTx);
+			dbgp(F(" strict="));
+			dbgp(_STRICT_1CH);
+			dbgp(F(" datr="));
+			dbgpl(datr);
+			dbgp(F(" Rfreq="));
+			dbgp(freq);
+			dbgp(F(", Request="));
+			dbgp(freq);
+			dbgp(F(" ->"));
+			dbgpl(LoraDown.fff);
+			dbgp(F(" sf  ="));
+			dbgp(atoi(datr + 2));
+			dbgp(F(" ->"));
+			dbgpl(LoraDown.sfTx);
 
-			Serial.print(F(" modu="));
-			Serial.println(modu);
-			Serial.print(F(" powe="));
-			Serial.println(powe);
-			Serial.print(F(" codr="));
-			Serial.println(codr);
+			dbgp(F(" modu="));
+			dbgpl(modu);
+			dbgp(F(" powe="));
+			dbgpl(powe);
+			dbgp(F(" codr="));
+			dbgpl(codr);
 
-			Serial.print(F(" ipol="));
-			Serial.println(ipol);
+			dbgp(F(" ipol="));
+			dbgpl(ipol);
 		}
-		Serial.println();
+		dbgpl();
 	}
 #endif
 
 	if (LoraDown.payLength != psize)
 	{
 #if DUSB >= 1
-		Serial.print(F("sendPacket:: WARNING payLength: "));
-		Serial.print(LoraDown.payLength);
-		Serial.print(F(", psize="));
-		Serial.println(psize);
+		dbgp(F("sendPacket:: WARNING payLength: "));
+		dbgp(LoraDown.payLength);
+		dbgp(F(", psize="));
+		dbgpl(psize);
 		if (debug >= 2)
 			Serial.flush();
 #endif
@@ -301,13 +304,13 @@ int sendPacket(uint8_t *buf, uint8_t length)
 #if DUSB >= 1
 	else if ((debug >= 2) && (pdebug & P_TX))
 	{
-		Serial.print(F("T Payload="));
+		dbgp(F("T Payload="));
 		for (i = 0; i < LoraDown.payLength; i++)
 		{
-			Serial.print(payLoad[i], HEX);
-			Serial.print(':');
+			dbgp(payLoad[i], HEX);
+			dbgp(':');
 		}
-		Serial.println();
+		dbgpl();
 		if (debug >= 2)
 			Serial.flush();
 	}
@@ -317,7 +320,7 @@ int sendPacket(uint8_t *buf, uint8_t length)
 #if DUSB >= 1
 	if ((debug >= 2) && (pdebug & P_TX))
 	{
-		Serial.println(F("T sendPacket:: fini OK"));
+		dbgpl(F("T sendPacket:: fini OK"));
 	}
 #endif // DUSB
 
@@ -358,41 +361,41 @@ int buildPacket(uint32_t tmst, uint8_t *buff_up, struct LoraUp LoraUp, bool inte
 	char messageLength = LoraUp.payLength;
 
 	// Chequear si el paquete es custom agrotools
-	Serial.println("RX lora");
+	dbgpl("RX lora");
 	for (uint8_t i = 0; i < LoraUp.payLength; i++)
 	{
 		if (message[i] < 0x10)
 		{
-			Serial.print(0, HEX);
+			dbgp(0, HEX);
 		}
-		Serial.print(message[i], HEX);
-		Serial.print(" ");
+		dbgp(message[i], HEX);
+		dbgp(" ");
 	}
 
-	Serial.println("");
+	dbgpl("");
 
-	Serial.print("LoraUp Length ");
-	Serial.println((int)messageLength);
-	Serial.print("Calculed Length ");
-	Serial.println(message[19] + 20); // 20 = payload + overhead
-	if ((messageLength == (message[19] + 20)))
+	dbgp("LoraUp Length ");
+	dbgpl((int)messageLength);
+	dbgp("Calculed Length ");
+	dbgpl(message[19] + 20); // 16 = payload + overhead
+	if ((messageLength == (message[19] + 20)) || (messageLength == (message[19] + 16)))
 	{
 		// Custom agrotools - Agregar LoraWan wrap
-		Serial.println("Custom agrotools");
+		dbgpl("Custom agrotools");
 		fakeLoraWanWrap(message, (uint8_t *)&messageLength);
-
-		Serial.println("RX fake LoraWan wrap");
+		LoraUp.sf = 10;
+		dbgpl("RX fake LoraWan wrap");
 		for (uint8_t i = 0; i < messageLength; i++)
 		{
 			if (message[i] < 0x10)
 			{
-				Serial.print(0, HEX);
+				dbgp(0, HEX);
 			}
-			Serial.print(message[i], HEX);
-			Serial.print(" ");
+			dbgp(message[i], HEX);
+			dbgp(" ");
 		}
 
-		Serial.println("");
+		dbgpl("");
 	}
 	else
 	{
@@ -470,15 +473,15 @@ int buildPacket(uint32_t tmst, uint8_t *buff_up, struct LoraUp LoraUp, bool inte
 	{
 		if ((message[4] != 0x26) || (message[1] == 0x99))
 		{
-			Serial.print(F("addr="));
+			dbgp(F("addr="));
 			for (int i = messageLength; i > 0; i--)
 			{
 				if (message[i] < 0x10)
-					Serial.print('0');
-				Serial.print(message[i], HEX);
-				Serial.print(' ');
+					dbgp('0');
+				dbgp(message[i], HEX);
+				dbgp(' ');
 			}
-			Serial.println();
+			dbgpl();
 		}
 	}
 #endif //DUSB
@@ -584,22 +587,22 @@ int buildPacket(uint32_t tmst, uint8_t *buff_up, struct LoraUp LoraUp, bool inte
 #if DUSB >= 1
 	if ((debug >= 2) && (pdebug & P_RADIO))
 	{
-		Serial.print(F("R buildPacket:: pRSSI="));
-		Serial.print(prssi - rssicorr);
-		Serial.print(F(" RSSI: "));
-		Serial.print(_rssi - rssicorr);
-		Serial.print(F(" SNR: "));
-		Serial.print(SNR);
-		Serial.print(F(" Length: "));
-		Serial.print((int)messageLength);
-		Serial.print(F(" -> "));
+		dbgp(F("R buildPacket:: pRSSI="));
+		dbgp(prssi - rssicorr);
+		dbgp(F(" RSSI: "));
+		dbgp(_rssi - rssicorr);
+		dbgp(F(" SNR: "));
+		dbgp(SNR);
+		dbgp(F(" Length: "));
+		dbgp((int)messageLength);
+		dbgp(F(" -> "));
 		int i;
 		for (i = 0; i < messageLength; i++)
 		{
-			Serial.print(message[i], HEX);
-			Serial.print(' ');
+			dbgp(message[i], HEX);
+			dbgp(' ');
 		}
-		Serial.println();
+		dbgpl();
 		yield();
 	}
 #endif // DUSB
@@ -659,8 +662,8 @@ int buildPacket(uint32_t tmst, uint8_t *buff_up, struct LoraUp LoraUp, bool inte
 #if DUSB >= 1
 	if ((debug >= 1) && (encodedLen > 255) && (pdebug & P_RADIO))
 	{
-		Serial.print(F("R buildPacket:: b64 err, len="));
-		Serial.println(encodedLen);
+		dbgp(F("R buildPacket:: b64 err, len="));
+		dbgpl(encodedLen);
 		if (debug >= 2)
 			Serial.flush();
 		return (-1);
@@ -700,7 +703,7 @@ int buildPacket(uint32_t tmst, uint8_t *buff_up, struct LoraUp LoraUp, bool inte
 #if DUSB >= 1
 	if ((j < 0) && (debug >= 1) && (pdebug & P_RADIO))
 	{
-		Serial.println(F("buildPacket:: Error "));
+		dbgpl(F("buildPacket:: Error "));
 	}
 #endif
 	buff_index += j;
@@ -787,10 +790,10 @@ int buildPacket(uint32_t tmst, uint8_t *buff_up, struct LoraUp LoraUp, bool inte
 #if DUSB >= 1
 	if ((debug >= 2) && (pdebug & P_RX))
 	{
-		Serial.print(F("R RXPK:: "));
-		Serial.println((char *)(buff_up + 12)); // debug: display JSON payload
-		Serial.print(F("R RXPK:: package length="));
-		Serial.println(buff_index);
+		dbgp(F("R RXPK:: "));
+		dbgpl((char *)(buff_up + 12)); // debug: display JSON payload
+		dbgp(F("R RXPK:: package length="));
+		dbgpl(buff_index);
 	}
 #endif
 	return (buff_index);
@@ -849,12 +852,14 @@ int receivePacket()
 
 		//#Punto de envio
 		S_PROTOCOL proto = settings_protocol();
+		dbgp("up SF ");dbgpl(LoraUp.sf);
 		if (proto == MQTTBRIDGE_TCP)
 		{
 			mqtt_sendUplink(LoraUp);
 		}
 		else if (proto == SEMTECH_PF_UDP)
 		{
+			Serial.write((char*)buff_up, build_index);
 			if (!sendUdp(ttnServer, _TTNPORT, buff_up, build_index))
 			{
 				return (-1); // received a message
@@ -908,33 +913,33 @@ int receivePacket()
 #if DUSB >= 1
 			if ((debug >= 1) && (pdebug & P_RX))
 			{
-				Serial.print(F("R receivePacket:: Ind="));
-				Serial.print(index);
-				Serial.print(F(", Len="));
-				Serial.print(LoraUp.payLength);
-				Serial.print(F(", A="));
+				dbgp(F("R receivePacket:: Ind="));
+				dbgp(index);
+				dbgp(F(", Len="));
+				dbgp(LoraUp.payLength);
+				dbgp(F(", A="));
 				for (int i = 0; i < 4; i++)
 				{
 					if (DevAddr[i] < 0x0F)
-						Serial.print('0');
-					Serial.print(DevAddr[i], HEX);
-					//Serial.print(' ');
+						dbgp('0');
+					dbgp(DevAddr[i], HEX);
+					//dbgp(' ');
 				}
 
-				Serial.print(F(", Msg="));
+				dbgp(F(", Msg="));
 				for (int i = 0; (i < statr[0].datal) && (i < 23); i++)
 				{
 					if (statr[0].data[i] < 0x0F)
-						Serial.print('0');
-					Serial.print(statr[0].data[i], HEX);
-					Serial.print(' ');
+						dbgp('0');
+					dbgp(statr[0].data[i], HEX);
+					dbgp(' ');
 				}
-				Serial.println();
+				dbgpl();
 			}
 		}
 		else if ((debug >= 2) && (pdebug & P_RX))
 		{
-			Serial.println(F("receivePacket:: No Index"));
+			dbgpl(F("receivePacket:: No Index"));
 		}
 #endif //DUSB
 #endif // _LOCALSERVER
@@ -1110,11 +1115,11 @@ uint8_t encodePacket(uint8_t *Data, uint8_t DataLength, uint16_t FrameCount, uin
 
 #if DUSB>=1
 	if (( debug>=2 ) && ( pdebug & P_GUI )) {
-		Serial.print(F("G encodePacket:: DevAddr="));
-		for (int i=0; i<4; i++ ) { Serial.print(DevAddr[i],HEX); Serial.print(' '); }
-		Serial.print(F("G encodePacket:: AppSKey="));
-		for (int i=0; i<16; i++ ) { Serial.print(AppSKey[i],HEX); Serial.print(' '); }
-		Serial.println();
+		dbgp(F("G encodePacket:: DevAddr="));
+		for (int i=0; i<4; i++ ) { dbgp(DevAddr[i],HEX); dbgp(' '); }
+		dbgp(F("G encodePacket:: AppSKey="));
+		for (int i=0; i<16; i++ ) { dbgp(AppSKey[i],HEX); dbgp(' '); }
+		dbgpl();
 	}
 #endif
 

@@ -90,8 +90,8 @@ void msg_oLED(String tim, String sf) {
 // ----------------------------------------------------------------
 void addr_oLED() 
 {
-	Serial.print(F("OLED_ADDR=0x"));
-	Serial.println(OLED_ADDR, HEX);
+	dbgp(F("OLED_ADDR=0x"));
+	dbgpl(OLED_ADDR, HEX);
 }
 
 

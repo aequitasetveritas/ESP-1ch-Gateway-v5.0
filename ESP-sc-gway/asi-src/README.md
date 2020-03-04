@@ -441,8 +441,8 @@ Inspect the current WiFi settings:
 
 ```cpp
 WiFiSettings wifiSettings = esp8266React.getWiFiSettingsService()->fetch();
-Serial.print("The ssid is:");
-Serial.println(wifiSettings.ssid);
+dbgp("The ssid is:");
+dbgpl(wifiSettings.ssid);
 ```
 
 Configure the SSID and password:
@@ -458,7 +458,7 @@ Observe changes to the WiFiSettings:
 
 ```cpp
 esp8266React.getWiFiSettingsService()->addUpdateHandler([]() {
-   Serial.println("The WiFi Settings were updated!");
+   dbgpl("The WiFi Settings were updated!");
 });
 ```
 

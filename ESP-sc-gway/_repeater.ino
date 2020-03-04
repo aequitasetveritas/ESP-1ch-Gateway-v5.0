@@ -32,11 +32,11 @@
 
 int sendLora(char *msg, int len) {
 	// Check whete len is not exceeding maximum length
-	Serial.print("sendLora:: ");
+	dbgp("sendLora:: ");
 	
 	for (int i=0; i< len; i++) {
-		Serial.print(msg[1],HEX);
-		Serial.print('.');
+		dbgp(msg[1],HEX);
+		dbgp('.');
 	}
 	
 	if (debug>=2) Serial.flush();

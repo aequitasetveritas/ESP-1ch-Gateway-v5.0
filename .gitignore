@@ -4,3 +4,4 @@ libraries/*
 libraries/*
 ESP-sc-gway/asi-src/interface/build
 ESP-sc-gway/asi-src/interface/node_modules
+ESP-sc-gway/ESP-sc-gway.ino.cpp

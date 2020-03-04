@@ -40,6 +40,7 @@
 #include <SPI.h>	   // For the RFM95 bus
 #include "loraFiles.h"
 #include "asi-src/src/asi.h"
+#include "macro_helpers.h"
 
 unsigned long nowTime=0;
 uint8_t ifreq = 0; 
@@ -289,8 +290,8 @@ void setRate(uint8_t sf, uint8_t crc)
 #if DUSB>=2
 	if ((sf<SF7) || (sf>SF12)) {
 		if (( debug>=1 ) && ( pdebug & P_RADIO )) {
-			Serial.print(F("setRate:: SF="));
-			Serial.println(sf);
+			dbgp(F("setRate:: SF="));
+			dbgpl(sf);
 		}
 		return;
 	}
@@ -469,9 +470,9 @@ void hop() {
 	//
 #if DUSB>=1
 	if (( debug>=2 ) && ( pdebug & P_RADIO )){
-			Serial.print(F("hop:: hopTime:: "));
-			Serial.print(micros() - hopTime);
-			Serial.print(F(", "));
+			dbgp(F("hop:: hopTime:: "));
+			dbgp(micros() - hopTime);
+			dbgp(F(", "));
 			SerialStat(0);
 	}
 #endif
@@ -507,7 +508,7 @@ uint8_t receivePkt(uint8_t *payload)
 	if (crcUsed & 0x40) {
 #if DUSB>=1
 		if (( debug>=2) && (pdebug & P_RX )) {
-			Serial.println(F("R rxPkt:: CRC used"));
+			dbgpl(F("R rxPkt:: CRC used"));
 		}
 #endif
 	}
@@ -517,9 +518,9 @@ uint8_t receivePkt(uint8_t *payload)
     {
 #if DUSB>=1
         if (( debug>=0) && ( pdebug & P_RADIO )) {
-			Serial.print(F("rxPkt:: Err CRC, ="));
+			dbgp(F("rxPkt:: Err CRC, ="));
 			SerialTime();
-			Serial.println();
+			dbgpl();
 		}
 #endif
 		return 0;
@@ -532,7 +533,7 @@ uint8_t receivePkt(uint8_t *payload)
     {
 #if DUSB>=1
         if (( debug>=0) && ( pdebug & P_RADIO )) {
-			Serial.println(F("rxPkt:: Err HEADER"));
+			dbgpl(F("rxPkt:: Err HEADER"));
 		}
 #endif
 		// Reset VALID-HEADER flag 0x10
@@ -547,12 +548,12 @@ uint8_t receivePkt(uint8_t *payload)
 
 		if (readRegister(REG_FIFO_RX_CURRENT_ADDR) != readRegister(REG_FIFO_RX_BASE_AD)) {
 			if (( debug>=0 ) && ( pdebug & P_RADIO )) {
-				Serial.print(F("RX BASE <"));
-				Serial.print(readRegister(REG_FIFO_RX_BASE_AD));
-				Serial.print(F("> != RX CURRENT <"));
-				Serial.print(readRegister(REG_FIFO_RX_CURRENT_ADDR));
-				Serial.print(F(">"));
-				Serial.println();
+				dbgp(F("RX BASE <"));
+				dbgp(readRegister(REG_FIFO_RX_BASE_AD));
+				dbgp(F("> != RX CURRENT <"));
+				dbgp(readRegister(REG_FIFO_RX_CURRENT_ADDR));
+				dbgp(F(">"));
+				dbgpl();
 			}
 		}
 		
@@ -561,8 +562,8 @@ uint8_t receivePkt(uint8_t *payload)
         uint8_t receivedCount = readRegister(REG_RX_NB_BYTES);			// 0x13; How many bytes were read
 #if DUSB>=1
 		if ((debug>=0) && (currentAddr > 64)) {
-			Serial.print(F("rxPkt:: Rx addr>64"));
-			Serial.println(currentAddr);
+			dbgp(F("rxPkt:: Rx addr>64"));
+			dbgpl(currentAddr);
 		}
 #endif
         writeRegister(REG_FIFO_ADDR_PTR, (uint8_t) currentAddr);		// 0x0D 
@@ -570,8 +571,8 @@ uint8_t receivePkt(uint8_t *payload)
 		if (receivedCount > PAYLOAD_LENGTH) {
 #if DUSB>=1
 			if (( debug>=0 ) & ( pdebug & P_RADIO )) {
-				Serial.print(F("rxPkt:: receivedCount="));
-				Serial.println(receivedCount);
+				dbgp(F("rxPkt:: receivedCount="));
+				dbgpl(receivedCount);
 			}
 #endif
 			receivedCount=PAYLOAD_LENGTH;
@@ -589,26 +590,26 @@ uint8_t receivePkt(uint8_t *payload)
 #if DUSB>=1
 		if (( debug>=0 ) && ( pdebug & P_RX )){
 		
-			Serial.print(F("rxPkt:: t="));
+			dbgp(F("rxPkt:: t="));
 			SerialTime();
 			
-			Serial.print(F(", f="));
-			Serial.print(ifreq);
-			Serial.print(F(", global_sf="));
-			Serial.print(global_sf);
-			Serial.print(F(", a="));
-			if (payload[4]<0x10) Serial.print('0'); Serial.print(payload[4], HEX);
-			if (payload[3]<0x10) Serial.print('0'); Serial.print(payload[3], HEX);
-			if (payload[2]<0x10) Serial.print('0'); Serial.print(payload[2], HEX);
-			if (payload[1]<0x10) Serial.print('0'); Serial.print(payload[1], HEX);
-			Serial.print(F(", flags="));
-			Serial.print(irqflags,HEX);
-			Serial.print(F(", addr="));
-			Serial.print(currentAddr);
-			Serial.print(F(", len="));
-			Serial.print(receivedCount);
-			Serial.print(F(" tmst="));
-			Serial.print(micros());
+			dbgp(F(", f="));
+			dbgp(ifreq);
+			dbgp(F(", global_sf="));
+			dbgp(global_sf);
+			dbgp(F(", a="));
+			if (payload[4]<0x10) dbgp('0'); dbgp(payload[4], HEX);
+			if (payload[3]<0x10) dbgp('0'); dbgp(payload[3], HEX);
+			if (payload[2]<0x10) dbgp('0'); dbgp(payload[2], HEX);
+			if (payload[1]<0x10) dbgp('0'); dbgp(payload[1], HEX);
+			dbgp(F(", flags="));
+			dbgp(irqflags,HEX);
+			dbgp(F(", addr="));
+			dbgp(currentAddr);
+			dbgp(F(", len="));
+			dbgp(receivedCount);
+			dbgp(F(" tmst="));
+			dbgp(micros());
 
 			// If debug level 1 is specified, we display the content of the message as well
 			// We need to decode the message as well will it make any sense
@@ -627,25 +628,25 @@ uint8_t receivePkt(uint8_t *payload)
 					DevAddr[3] = payload[1];
 				
 				if ((index = inDecodes((char *)(payload+1))) >=0 ) {
-					Serial.print(F(", Ind="));
-					Serial.print(index);
-					//Serial.println();
+					dbgp(F(", Ind="));
+					dbgp(index);
+					//dbgpl();
 				}
 				else if (debug>=1) {
-					Serial.print(F(", No Index"));
-					Serial.println();
+					dbgp(F(", No Index"));
+					dbgpl();
 					return(receivedCount);
 				}	
 
 				// ------------------------------
 				
-				Serial.print(F(", data="));
+				dbgp(F(", data="));
 				for (int i=0; i<receivedCount; i++) { data[i] = payload[i]; }		// Copy array
 				
 				//for (int i=0; i<receivedCount; i++) {
-				//	if (payload[i]<=0xF) Serial.print('0');
-				//	Serial.print(payload[i], HEX);
-				//	Serial.print(' ');
+				//	if (payload[i]<=0xF) dbgp('0');
+				//	dbgp(payload[i], HEX);
+				//	dbgp(' ');
 				//}
 
 
@@ -656,29 +657,29 @@ uint8_t receivePkt(uint8_t *payload)
 				// before the end since those are MIC bytes
 				uint8_t CodeLength = encodePacket((uint8_t *)(data + 9), receivedCount-9-4, (uint16_t)frameCount, DevAddr, decodes[index].appKey, 0);
 
-				Serial.print(F("- NEW fc="));
-				Serial.print(frameCount);
-				Serial.print(F(", addr="));
+				dbgp(F("- NEW fc="));
+				dbgp(frameCount);
+				dbgp(F(", addr="));
 				
 				for (int i=0; i<4; i++) {
-					if (DevAddr[i]<=0xF) Serial.print('0');
-					Serial.print(DevAddr[i], HEX);
-					Serial.print(' ');
+					if (DevAddr[i]<=0xF) dbgp('0');
+					dbgp(DevAddr[i], HEX);
+					dbgp(' ');
 				}
 				
-				Serial.print(F(", len="));
-				Serial.print(CodeLength);
-				Serial.print(F(", data="));
+				dbgp(F(", len="));
+				dbgp(CodeLength);
+				dbgp(F(", data="));
 
 				for (int i=0; i<receivedCount; i++) {
-					if (data[i]<=0xF) Serial.print('0');
-					Serial.print(data[i], HEX);
-					Serial.print(' ');
+					if (data[i]<=0xF) dbgp('0');
+					dbgp(data[i], HEX);
+					dbgp(' ');
 				}
 #endif // _TRUSTED_DECODE
 			}
 			
-			Serial.println();
+			dbgpl();
 			
 			if (debug>=2) Serial.flush();
 		}
@@ -707,8 +708,8 @@ bool sendPkt(uint8_t *payLoad, uint8_t payLength)
 #if DUSB>=2
 	if (payLength>=128) {
 		if (debug>=1) {
-			Serial.print("sendPkt:: len=");
-			Serial.println(payLength);
+			dbgp("sendPkt:: len=");
+			dbgpl(payLength);
 		}
 		return false;
 	}
@@ -757,8 +758,8 @@ void loraWait(const uint32_t timestamp)
 		default:
 #if DUSB>=1
 		if (( debug>=1 ) && ( pdebug & P_TX )) {
-			Serial.print(F("T loraWait:: unknown SF="));
-			Serial.print(LoraDown.sfTx);
+			dbgp(F("T loraWait:: unknown SF="));
+			dbgp(LoraDown.sfTx);
 		}
 #endif
 		break; // to avoid compiler error when DUSB==0
@@ -766,11 +767,11 @@ void loraWait(const uint32_t timestamp)
 	tmst = tmst + txDelay + adjust;						// tmst based on txDelay and spreading factor
 	uint32_t waitTime = tmst - micros();
 
-	Serial.print("waitTime "); Serial.println(waitTime);
+	dbgp("waitTime "); dbgpl(waitTime);
 
 //	if (waitTime<0) { //uint32_t is never negative! If micros() is > tmst, waitTime assume a very big value and the app hangs
 	if (micros()>tmst) { // test if the tmst is in the past to avoid hangs
-		Serial.println(F("loraWait:: Error wait time < 0"));
+		dbgpl(F("loraWait:: Error wait time < 0"));
 		return;
 	}
 	
@@ -786,21 +787,21 @@ void loraWait(const uint32_t timestamp)
 
 #if DUSB>=1
 	else if ((waitTime+20) < 0) {
-		Serial.println(F("loraWait:: TOO LATE"));		// Never happens
+		dbgpl(F("loraWait:: TOO LATE"));		// Never happens
 	}
 
 	if (( debug>=2 ) && ( pdebug & P_TX )) { 
-		Serial.print(F("T start: ")); 
-		Serial.print(startMics);
-		Serial.print(F(", tmst: "));					// tmst
-		Serial.print(tmst);
-		Serial.print(F(", end: "));						// This must be micros(), and equal to tmst
-		Serial.print(micros());
-		Serial.print(F(", waited: "));
-		Serial.print(tmst - startMics);
-		Serial.print(F(", delay="));
-		Serial.print(txDelay);
-		Serial.println();
+		dbgp(F("T start: ")); 
+		dbgp(startMics);
+		dbgp(F(", tmst: "));					// tmst
+		dbgp(tmst);
+		dbgp(F(", end: "));						// This must be micros(), and equal to tmst
+		dbgp(micros());
+		dbgp(F(", waited: "));
+		dbgp(tmst - startMics);
+		dbgp(F(", delay="));
+		dbgp(txDelay);
+		dbgpl();
 		if (debug>=2) Serial.flush();
 	}
 #endif
@@ -839,32 +840,32 @@ void txLoraModem(uint8_t *payLoad, uint8_t payLength, uint32_t tmst, uint8_t sfT
 #if DUSB>=2
 	if (debug>=1) {
 		// Make sure that all serial stuff is done before continuing
-		Serial.print(F("txLoraModem::"));
-		Serial.print(F("  powe: ")); Serial.print(powe);
-		Serial.print(F(", freq: ")); Serial.print(freq);
-		Serial.print(F(", crc: ")); Serial.print(crc);
-		Serial.print(F(", iiq: 0X")); Serial.print(iiq,HEX);
-		Serial.println();
+		dbgp(F("txLoraModem::"));
+		dbgp(F("  powe: ")); dbgp(powe);
+		dbgp(F(", freq: ")); dbgp(freq);
+		dbgp(F(", crc: ")); dbgp(crc);
+		dbgp(F(", iiq: 0X")); dbgp(iiq,HEX);
+		dbgpl();
 		if (debug>=2) Serial.flush();
 	}
 #endif
 
-	Serial.print(F("txLoraModem::"));
-		Serial.print(F("  powe: ")); Serial.print(powe);
-		Serial.print(F(", freq: ")); Serial.print(freq);
-		Serial.print(F(", crc: ")); Serial.print(crc);
-		Serial.print(F(", payLength: ")); Serial.print(payLength);
-		Serial.print(F(", sfTx: ")); Serial.print(sfTx);
-		Serial.print(F(", bw: ")); Serial.print(bw);
-		Serial.print(F(", iiq: 0X")); Serial.print(iiq,HEX);
+	dbgp(F("txLoraModem::"));
+		dbgp(F("  powe: ")); dbgp(powe);
+		dbgp(F(", freq: ")); dbgp(freq);
+		dbgp(F(", crc: ")); dbgp(crc);
+		dbgp(F(", payLength: ")); dbgp(payLength);
+		dbgp(F(", sfTx: ")); dbgp(sfTx);
+		dbgp(F(", bw: ")); dbgp(bw);
+		dbgp(F(", iiq: 0X")); dbgp(iiq,HEX);
 		for(uint8_t z = 0;z < payLength; z++){
 			if(payLoad[z]<0x10){
-				Serial.print("0");
+				dbgp("0");
 			}
-			Serial.print(payLoad[z],HEX);
-			Serial.print(" ");
+			dbgp(payLoad[z],HEX);
+			dbgp(" ");
 		}
-		Serial.println();
+		dbgpl();
 		
 	_state = S_TX;
 		
@@ -1022,7 +1023,7 @@ void rxLoraModem()
 	else {
 		// Set Continous Receive Mode, usefull if we stay on one SF
 		_state= S_RX;
-		if (_hop) Serial.println(F("rxLoraModem:: ERROR continuous receive in hop mode"));
+		if (_hop) dbgpl(F("rxLoraModem:: ERROR continuous receive in hop mode"));
 		opmode(OPMODE_RX);										// 0x80 | 0x05 (listen)
 	}
 	
@@ -1138,7 +1139,7 @@ void initLoraModem()
     if (version == 0x22) {
         // sx1272
 #if DUSB>=2
-        Serial.println(F("WARNING:: SX1272 detected"));
+        dbgpl(F("WARNING:: SX1272 detected"));
 #endif
         sx1272 = true;
     } 
@@ -1147,7 +1148,7 @@ void initLoraModem()
         // sx1276?
 #if DUSB>=2
             if (debug >=1) 
-				Serial.println(F("SX1276 starting"));
+				dbgpl(F("SX1276 starting"));
 #endif
             sx1272 = false;
 	}
@@ -1157,14 +1158,14 @@ void initLoraModem()
 		// Maybe this issue can be resolved of we try one of the other defined 
 		// boards. (Comresult or Hallard or ...)
 #if DUSB>=1
-		Serial.print(F("Unknown transceiver="));
-		Serial.print(version,HEX);
-		Serial.print(F(", pins.rst =")); Serial.print(pins.rst);
-		Serial.print(F(", pins.ss  =")); Serial.print(pins.ss);
-		Serial.print(F(", pins.dio0 =")); Serial.print(pins.dio0);
-		Serial.print(F(", pins.dio1 =")); Serial.print(pins.dio1);
-		Serial.print(F(", pins.dio2 =")); Serial.print(pins.dio2);
-		Serial.println();
+		dbgp(F("Unknown transceiver="));
+		dbgp(version,HEX);
+		dbgp(F(", pins.rst =")); dbgp(pins.rst);
+		dbgp(F(", pins.ss  =")); dbgp(pins.ss);
+		dbgp(F(", pins.dio0 =")); dbgp(pins.dio0);
+		dbgp(F(", pins.dio1 =")); dbgp(pins.dio1);
+		dbgp(F(", pins.dio2 =")); dbgp(pins.dio2);
+		dbgpl();
 		Serial.flush();
 #endif
 		die("");												// Maybe first try another kind of receiver
@@ -1212,7 +1213,7 @@ void startReceiver() {
 	if (cadGet()) {
 #if DUSB>=1
 		if (( debug>=1 ) && ( pdebug & P_SCAN )) {
-			Serial.println(F("S PULL:: _state set to S_SCAN"));
+			dbgpl(F("S PULL:: _state set to S_SCAN"));
 			if (debug>=2) Serial.flush();
 		}
 #endif

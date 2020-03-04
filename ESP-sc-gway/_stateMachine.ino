@@ -21,6 +21,7 @@
 //
 
 #include "_loraModem.h"
+#include "macro_helpers.h"
 
 // ----------------------------------------------------------------------------
 // stateMachine handler of the state machine.
@@ -83,7 +84,7 @@ void stateMachine()
 	
 #if DUSB>=1
 	if (intr != flags) {
-		Serial.print(F("FLAG  ::"));
+		dbgp(F("FLAG  ::"));
 		SerialStat(intr);
 	}
 #endif
@@ -115,7 +116,7 @@ void stateMachine()
 				default:
 					eventWait=0;
 #if DUSB>=1
-					Serial.print(F("DEFAULT :: "));
+					dbgp(F("DEFAULT :: "));
 					SerialStat(intr);
 #endif
 			}
@@ -137,8 +138,8 @@ void stateMachine()
 					doneWait *= 1;
 #if DUSB>=1
 					if (( debug>=0 ) && ( pdebug & P_PRE )) {
-						Serial.print(F("PRE:: DEF set"));
-						Serial.println();
+						dbgp(F("PRE:: DEF set"));
+						dbgpl();
 					}
 #endif
 					break;
@@ -158,7 +159,7 @@ void stateMachine()
 				cadScanner();						// Reset to initial SF, leave frequency "freqs[ifreq]"
 #if DUSB>=1
 				if (( debug >= 1 ) && ( pdebug & P_PRE )) {
-					Serial.print(F("DONE  :: "));
+					dbgp(F("DONE  :: "));
 					SerialStat(intr);
 				}
 #endif
@@ -176,7 +177,7 @@ void stateMachine()
 				cadScanner();						// Reset to initial SF, leave frequency "freqs[ifreq]"
 #if DUSB>=1
 				if (( debug >= 2 ) && ( pdebug & P_PRE )) {
-					Serial.print(F("HOP ::  "));
+					dbgp(F("HOP ::  "));
 					SerialStat(intr);
 				}
 #endif
@@ -191,11 +192,11 @@ void stateMachine()
 			// as there was NO interrupt
 #if DUSB>=1
 			if (( debug>=3 ) && ( pdebug & P_PRE )) {
-				Serial.print(F("PRE:: eventTime="));
-				Serial.print(eventTime);
-				Serial.print(F(", micros="));
-				Serial.print(micros());
-				Serial.print(F(": "));
+				dbgp(F("PRE:: eventTime="));
+				dbgp(eventTime);
+				dbgp(F(", micros="));
+				dbgp(micros());
+				dbgp(F(": "));
 				SerialStat(intr);
 			}
 #endif
@@ -227,7 +228,7 @@ void stateMachine()
 	  case S_INIT:
 #if DUSB>=1
 		if (( debug>=1 ) && ( pdebug & P_PRE )) { 
-			Serial.println(F("S_INIT")); 
+			dbgpl(F("S_INIT")); 
 		}
 #endif
 		// new state, needed to startup the radio (to S_SCAN)
@@ -281,7 +282,7 @@ void stateMachine()
 			
 #if DUSB>=1
 			if (( debug>=1 ) && ( pdebug & P_SCAN )) {
-				Serial.print(F("SCAN:: "));
+				dbgp(F("SCAN:: "));
 				SerialStat(intr);
 			}
 #endif
@@ -303,7 +304,7 @@ void stateMachine()
 
 #if DUSB>=1
 			if (( debug>=2 ) && ( pdebug & P_SCAN )) {
-				Serial.print(F("SCAN:: CDDONE: "));
+				dbgp(F("SCAN:: CDDONE: "));
 				SerialStat(intr);
 			}
 #endif
@@ -318,7 +319,7 @@ void stateMachine()
 			{
 #if DUSB>=1
 				if (( debug>=2 ) && ( pdebug & P_SCAN )) {
-					Serial.print(F("SCAN:: -> CAD: "));
+					dbgp(F("SCAN:: -> CAD: "));
 					SerialStat(intr);
 				}
 #endif
@@ -331,9 +332,9 @@ void stateMachine()
 			else {
 #if DUSB>=1
 				if (( debug>=2 ) && ( pdebug & P_SCAN )) {
-					Serial.print("SCAN:: rssi=");
-					Serial.print(rssi);
-					Serial.print(F(": "));
+					dbgp("SCAN:: rssi=");
+					dbgp(rssi);
+					dbgp(F(": "));
 					SerialStat(intr);
 				}
 #endif
@@ -373,7 +374,7 @@ void stateMachine()
 		else {
 #if DUSB>=1
 			if (( debug>=0 ) && ( pdebug & P_SCAN )) {
-				Serial.print(F("SCAN unknown:: "));
+				dbgp(F("SCAN unknown:: "));
 				SerialStat(intr);
 			}
 #endif
@@ -440,7 +441,7 @@ void stateMachine()
 			detTime = micros();
 #if DUSB>=1
 			if (( debug>=1 ) && ( pdebug & P_CAD )) {
-				Serial.print(F("CAD:: "));
+				dbgp(F("CAD:: "));
 				SerialStat(intr);
 			}
 #endif
@@ -473,8 +474,8 @@ void stateMachine()
 
 #if DUSB>=1
 				if (( debug>=2 ) && ( pdebug & P_CAD )) {
-					Serial.print(F("S_CAD:: CDONE, SF="));
-					Serial.println(global_sf);
+					dbgp(F("S_CAD:: CDONE, SF="));
+					dbgpl(global_sf);
 				}
 #endif
 			}
@@ -494,7 +495,7 @@ void stateMachine()
 
 #if DUSB>=1		
 				if (( debug>=2 ) && ( pdebug & P_CAD )) {
-					Serial.print(F("CAD->SCAN:: "));
+					dbgp(F("CAD->SCAN:: "));
 					SerialStat(intr);
 				}
 #endif
@@ -512,7 +513,7 @@ void stateMachine()
 		else if (intr == 0x00) {
 #if DUSB>=0
 			if (( debug>=3 ) && ( pdebug & P_CAD )) {
-				Serial.println("Err CAD:: intr is 0x00");
+				dbgpl("Err CAD:: intr is 0x00");
 			}
 #endif
 			_event=1;											// Stay in CAD _state until real interrupt
@@ -524,7 +525,7 @@ void stateMachine()
 		else {
 #if DUSB>=1
 			if (( debug>=0) && ( pdebug & P_CAD )) { 
-				Serial.print(F("Err CAD: Unknown::")); 
+				dbgp(F("Err CAD: Unknown::")); 
 				SerialStat(intr);
 			}
 #endif
@@ -561,7 +562,7 @@ void stateMachine()
 			if (intr & IRQ_LORA_CRCERR_MASK) {
 #if DUSB>=1
 				if (( debug>=0 ) && ( pdebug & P_RX )) {
-					Serial.print(F("Rx CRC err: "));
+					dbgp(F("Rx CRC err: "));
 					SerialStat(intr);
 				}
 #endif
@@ -604,10 +605,10 @@ void stateMachine()
 			if((LoraUp.payLength = receivePkt(LoraUp.payLoad)) <= 0) {
 #if DUSB>=1
 				if (( debug>=1 ) && ( pdebug & P_RX )) {
-					Serial.print(F("sMachine:: Error S-RX: "));
-					Serial.print(F("payLength="));
-					Serial.print(LoraUp.payLength);
-					Serial.println();
+					dbgp(F("sMachine:: Error S-RX: "));
+					dbgp(F("payLength="));
+					dbgp(LoraUp.payLength);
+					dbgpl();
 				}
 #endif
 				_event=1;
@@ -624,9 +625,9 @@ void stateMachine()
 			}
 #if DUSB>=1
 			if (( debug>=1 ) && ( pdebug & P_RX )) {
-				Serial.print(F("RXDONE in dT="));
-				Serial.print(ffTime - detTime);
-				Serial.print(F(": "));
+				dbgp(F("RXDONE in dT="));
+				dbgp(ffTime - detTime);
+				dbgp(F(": "));
 				SerialStat(intr);
 			}
 #endif
@@ -660,7 +661,7 @@ void stateMachine()
 			if (receivePacket() <= 0) {							// read is not successful
 #if DUSB>=1
 				if (( debug>=0 ) && ( pdebug & P_RX )) {
-					Serial.println(F("sMach:: Error receivePacket"));
+					dbgpl(F("sMach:: Error receivePacket"));
 				}
 #endif
 			}
@@ -705,7 +706,7 @@ void stateMachine()
 				// Set the state to CAD scanning
 #if DUSB>=1
 				if (( debug>=2 ) && ( pdebug & P_RX )) {
-					Serial.print(F("RXTOUT:: "));
+					dbgp(F("RXTOUT:: "));
 					SerialStat(intr);
 				}
 #endif
@@ -733,7 +734,7 @@ void stateMachine()
 			//writeRegister(REG_IRQ_FLAGS, IRQ_LORA_HEADER_MASK);
 #if DUSB>=1
 			if (( debug>=3 ) && ( pdebug & P_RX )) {
-				Serial.print(F("RX HEADER:: "));
+				dbgp(F("RX HEADER:: "));
 				SerialStat(intr);
 			}
 #endif
@@ -747,7 +748,7 @@ void stateMachine()
 		else if (intr == 0x00) {
 #if DUSB>=1
 			if (( debug>=3) && ( pdebug & P_RX )) {
-				Serial.print(F("S_RX no INTR:: "));
+				dbgp(F("S_RX no INTR:: "));
 				SerialStat(intr);
 			}
 #endif
@@ -759,7 +760,7 @@ void stateMachine()
 		else {							
 #if DUSB>=1
 			if (( debug>=0 ) && ( pdebug & P_RX )) {
-				Serial.print(F("S_RX:: no RXDONE, RXTOUT, HEADER:: "));
+				dbgp(F("S_RX:: no RXDONE, RXTOUT, HEADER:: "));
 				SerialStat(intr);
 			}
 #endif
@@ -785,7 +786,7 @@ void stateMachine()
 		if (intr == 0x00) {
 #if DUSB>=1
 			if (( debug>=2 ) && ( pdebug & P_TX )) {
-				Serial.println(F("TX:: 0x00"));
+				dbgpl(F("TX:: 0x00"));
 			}
 #endif
 			_event=1;
@@ -816,7 +817,7 @@ void stateMachine()
 		
 #if DUSB>=1
 		if (( debug>=1 ) && ( pdebug & P_TX )) { 
-			Serial.print(F("T TX done:: ")); 
+			dbgp(F("T TX done:: ")); 
 			SerialStat(intr);
 		}
 #endif
@@ -840,10 +841,10 @@ void stateMachine()
 
 #if DUSB>=1
 			if (( debug>=0 ) && ( pdebug & P_TX )) {
-				Serial.print(F("T TXDONE:: rcvd="));
-				Serial.print(micros());
-				Serial.print(F(", diff="));
-				Serial.println(micros()-LoraDown.tmst);
+				dbgp(F("T TXDONE:: rcvd="));
+				dbgp(micros());
+				dbgp(F(", diff="));
+				dbgpl(micros()-LoraDown.tmst);
 				if (debug>=2) Serial.flush();
 			}
 #endif
@@ -864,7 +865,7 @@ void stateMachine()
 			writeRegister(REG_IRQ_FLAGS, (uint8_t) 0xFF);			// reset interrupt flags
 #if DUSB>=1
 			if (( debug>=1 ) && ( pdebug & P_TX )) {
-				Serial.println(F("T TXDONE:: done OK"));
+				dbgpl(F("T TXDONE:: done OK"));
 			}
 #endif
 		}
@@ -873,7 +874,7 @@ void stateMachine()
 		else if ( intr != 0 ) {
 #if DUSB>=1
 			if (( debug>=0 ) && ( pdebug & P_TX )) {
-				Serial.print(F("T TXDONE:: unknown int:"));
+				dbgp(F("T TXDONE:: unknown int:"));
 				SerialStat(intr);
 			}
 #endif
@@ -893,7 +894,7 @@ void stateMachine()
 			if (( _state == S_TXDONE ) && (( micros() - sendTime) > 7000000 )) {
 #if DUSB>=1
 				if (( debug>=1 ) && ( pdebug & P_TX )) {
-					Serial.println(F("T TXDONE:: reset TX"));
+					dbgpl(F("T TXDONE:: reset TX"));
 					Serial.flush();
 				}
 #endif
@@ -901,7 +902,7 @@ void stateMachine()
 			}
 #if DUSB>=1
 			if (( debug>=3 ) && ( pdebug & P_TX )) {
-				Serial.println(F("T TXDONE:: No Interrupt"));
+				dbgpl(F("T TXDONE:: No Interrupt"));
 			}
 #endif
 		}
@@ -917,14 +918,14 @@ void stateMachine()
 	  default:
 #if DUSB>=1
 		if (( debug>=0) && ( pdebug & P_PRE )) { 
-			Serial.print("ERR state="); 
-			Serial.println(_state);	
+			dbgp("ERR state="); 
+			dbgpl(_state);	
 		}
 #endif
 		if ((cadGet()) || (_hop)) {
 #if DUSB>=1
 			if (debug>=0) {
-				Serial.println(F("default:: Unknown _state "));
+				dbgpl(F("default:: Unknown _state "));
 				SerialStat(intr);
 			}
 #endif

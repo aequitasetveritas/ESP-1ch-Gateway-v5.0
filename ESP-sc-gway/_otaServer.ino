@@ -33,7 +33,7 @@ void setupOta(char *hostname) {
 
 	ArduinoOTA.begin();
 #if DUSB>=1
-	Serial.println(F("setupOta:: Started"));
+	dbgpl(F("setupOta:: Started"));
 #endif	
 	// Hostname defaults to esp8266-[ChipID]
 	ArduinoOTA.setHostname(hostname);
@@ -48,11 +48,11 @@ void setupOta(char *hostname) {
 		//	type = "filesystem";
 
 		// NOTE: if updating SPIFFS this would be the place to unmount SPIFFS using SPIFFS.end()
-		Serial.println("Start updating " + type);
+		dbgpl("Start updating " + type);
 	});
 	
 	ArduinoOTA.onEnd([]() {
-		Serial.println("\nEnd");
+		dbgpl("\nEnd");
 	});
 	
 	ArduinoOTA.onProgress([](unsigned int progress, unsigned int total) {
@@ -61,17 +61,17 @@ void setupOta(char *hostname) {
 	
 	ArduinoOTA.onError([](ota_error_t error) {
 		Serial.printf("Error[%u]: ", error);
-		if (error == OTA_AUTH_ERROR) Serial.println("Auth Failed");
-		else if (error == OTA_BEGIN_ERROR) Serial.println("Begin Failed");
-		else if (error == OTA_CONNECT_ERROR) Serial.println("Connect Failed");
-		else if (error == OTA_RECEIVE_ERROR) Serial.println("Receive Failed");
-		else if (error == OTA_END_ERROR) Serial.println("End Failed");
+		if (error == OTA_AUTH_ERROR) dbgpl("Auth Failed");
+		else if (error == OTA_BEGIN_ERROR) dbgpl("Begin Failed");
+		else if (error == OTA_CONNECT_ERROR) dbgpl("Connect Failed");
+		else if (error == OTA_RECEIVE_ERROR) dbgpl("Receive Failed");
+		else if (error == OTA_END_ERROR) dbgpl("End Failed");
 	});
 	
 #if DUSB>=1
-	Serial.println("Ready");
-	Serial.print("IP address: ");
-	Serial.println(WiFi.localIP());
+	dbgpl("Ready");
+	dbgp("IP address: ");
+	dbgpl(WiFi.localIP());
 #endif
 	
 	// Only if the Webserver is active also
@@ -85,19 +85,19 @@ void setupOta(char *hostname) {
       switch(ret) {
         case HTTP_UPDATE_FAILED:
             //PREi::sendJSON(500, "Update failed.");
-			Serial.println(F("Update failed"));
+			dbgpl(F("Update failed"));
             break;
         case HTTP_UPDATE_NO_UPDATES:
             //PREi::sendJSON(304, "Update not necessary.");
-			Serial.println(F("Update not necessary"));
+			dbgpl(F("Update not necessary"));
             break;
         case HTTP_UPDATE_OK:
             //PREi::sendJSON(200, "Update started.");
-			Serial.println(F("Update started"));
+			dbgpl(F("Update started"));
             ESP.restart();
             break;
 		default:
-			Serial.println(F("setupOta:: Unknown ret="));
+			dbgpl(F("setupOta:: Unknown ret="));
       }
 	});
 #endif

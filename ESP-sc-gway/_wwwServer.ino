@@ -121,15 +121,15 @@ void wwwFile(String fn) {
 
 	if (!SPIFFS.exists(fn)) {
 #if DUSB>=1
-		Serial.print(F("wwwFile:: ERROR: file not found="));
-		Serial.println(fn);
+		dbgp(F("wwwFile:: ERROR: file not found="));
+		dbgpl(fn);
 #endif
 		return;
 	}
 #if DUSB>=2
 	else {
-		Serial.print(F("wwwFile:: File existist= "));
-		Serial.println(fn);
+		dbgp(F("wwwFile:: File existist= "));
+		dbgpl(fn);
 	}
 #endif
 
@@ -141,7 +141,7 @@ void wwwFile(String fn) {
 			
 			String s=f.readStringUntil('\n');
 			if (s.length() == 0) {
-				Serial.print(F("wwwFile:: String length 0"));
+				dbgp(F("wwwFile:: String length 0"));
 				break;
 			}
 			server.sendContent(s.substring(12));		// Skip the first 12 Gateway specific binary characters
@@ -295,7 +295,7 @@ static void setVariables(const char *cmd, const char *arg) {
 			if (ifreq==(nf-1)) ifreq=0; else ifreq++;
 		}
 		else if (atoi(arg) == -1) {
-			Serial.println("down");
+			dbgpl("down");
 			if (ifreq==0) ifreq=(nf-1); else ifreq--;
 		}
 
@@ -304,11 +304,11 @@ static void setVariables(const char *cmd, const char *arg) {
 		writeGwayCfg(CONFIGFILE);									// Save configuration to file
 	}
 
-	//if (strcmp(cmd, "GETTIME")==0) { Serial.println(F("gettime tbd")); }	// Get the local time
+	//if (strcmp(cmd, "GETTIME")==0) { dbgpl(F("gettime tbd")); }	// Get the local time
 	
-	//if (strcmp(cmd, "SETTIME")==0) { Serial.println(F("settime tbd")); }	// Set the local time
+	//if (strcmp(cmd, "SETTIME")==0) { dbgpl(F("settime tbd")); }	// Set the local time
 	
-	if (strcmp(cmd, "HELP")==0)    { Serial.println(F("Display Help Topics")); }
+	if (strcmp(cmd, "HELP")==0)    { dbgpl(F("Display Help Topics")); }
 	
 #if GATEWAYNODE==1
 	if (strcmp(cmd, "NODE")==0) {									// Set node on=1 or off=0
@@ -910,13 +910,13 @@ void setupWWW()
 
 	// Format the filesystem
 	server.on("/FORMAT", []() {
-		Serial.print(F("FORMAT ..."));
+		dbgp(F("FORMAT ..."));
 		
 		SPIFFS.format();								// Normally disabled. Enable only when SPIFFS corrupt
 		initConfig(&gwayConfig);
 		writeConfig( CONFIGFILE, &gwayConfig);
 #if DUSB>=1
-		Serial.println(F("DONE"));
+		dbgpl(F("DONE"));
 #endif
 		server.sendHeader("Location", String("/"), true);
 		server.send ( 302, "text/plain", "");
@@ -925,7 +925,7 @@ void setupWWW()
 	
 	// Reset the statistics
 	server.on("/RESET", []() {
-		Serial.println(F("RESET"));
+		dbgpl(F("RESET"));
 		startTime= now() - 1;					// Reset all timers too	
 		cp_nb_rx_rcv = 0;						// Reset package statistics
 		cp_nb_rx_ok = 0;
@@ -958,7 +958,7 @@ void setupWWW()
 
 	// Reset the boot counter
 	server.on("/BOOT", []() {
-		Serial.println(F("BOOT"));
+		dbgpl(F("BOOT"));
 #if STATISTICS >= 2
 		gwayConfig.boots = 0;
 		gwayConfig.wifis = 0;
@@ -1188,7 +1188,7 @@ void setupWWW()
 	server.on("/LOG", []() {
 		server.sendHeader("Location", String("/"), true);
 #if DUSB>=1
-		Serial.println(F("LOG button"));
+		dbgpl(F("LOG button"));
 #endif
 		buttonLog();
 		server.send ( 302, "text/plain", "");
@@ -1218,8 +1218,8 @@ void setupWWW()
 	// may take too much time to serve all information before a next
 	// package interrupt arrives at the gateway
 	
-	Serial.print(F("WWW Server started on port "));
-	Serial.println(A_SERVERPORT);
+	dbgp(F("WWW Server started on port "));
+	dbgpl(A_SERVERPORT);
 	return;
 } // setupWWW
 

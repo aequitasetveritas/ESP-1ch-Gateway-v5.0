@@ -59,23 +59,23 @@ void gateway_mgt(uint8_t size, uint8_t *buff) {
 	
 	switch (opcode) {
 		case MGT_RESET:
-			Serial.println(F("gateway_mgt:: RESET"));
+			dbgpl(F("gateway_mgt:: RESET"));
 			// No further parameters, just reset the GWay
 			setup();								// Call the sketch setup function
 			// Send Ack to server
 			
 		break;
 		case MGT_SET_SF:
-			Serial.println(F("gateway_mgt:: SET SF"));
+			dbgpl(F("gateway_mgt:: SET SF"));
 			// byte [4] contains desired SF code (7 for SF7 and 12 for SF12)
 		break;
 		case MGT_SET_FREQ:
-			Serial.println(F("gateway_mgt:: SET FREQ"));
+			dbgpl(F("gateway_mgt:: SET FREQ"));
 			// Byte [4] contains index of Frequency
 		break;
 		default:
-			Serial.print(F("gateway_mgt:: Unknown UDP code=")); 
-			Serial.println(opcode);
+			dbgp(F("gateway_mgt:: Unknown UDP code=")); 
+			dbgpl(opcode);
 			return;
 		break;
 	}

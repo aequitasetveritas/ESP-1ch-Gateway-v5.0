@@ -24,6 +24,7 @@
 // ----------------------------------------------------------------------------
 #include "utils.h"
 #include <Time.h>
+#include "macro_helpers.h"
 extern uint8_t debug;	 // Debug level! 0 is no msgs, 1 normal, 2 extensive
 extern uint8_t pdebug;
 
@@ -90,11 +91,11 @@ void SerialTime()
 	uint32_t tmin = minute();
 	uint32_t tsec = second();
 			
-	if (thrs<10) Serial.print('0'); Serial.print(thrs);
-	Serial.print(':');
-	if (tmin<10) Serial.print('0'); Serial.print(tmin);
-	Serial.print(':');
-	if (tsec<10) Serial.print('0'); Serial.print(tsec);
+	if (thrs<10) dbgp('0'); dbgp(thrs);
+	dbgp(':');
+	if (tmin<10) dbgp('0'); dbgp(tmin);
+	dbgp(':');
+	if (tsec<10) dbgp('0'); dbgp(tsec);
 			
 	if (debug>=2) Serial.flush();
 		
@@ -110,55 +111,55 @@ void SerialStat(uint8_t intr)
 {
 #if DUSB>=1
 	if (debug>=0) {
-		Serial.print(F("I="));
+		dbgp(F("I="));
 
-		if (intr & IRQ_LORA_RXTOUT_MASK) Serial.print(F("RXTOUT "));		// 0x80
-		if (intr & IRQ_LORA_RXDONE_MASK) Serial.print(F("RXDONE "));		// 0x40
-		if (intr & IRQ_LORA_CRCERR_MASK) Serial.print(F("CRCERR "));		// 0x20
-		if (intr & IRQ_LORA_HEADER_MASK) Serial.print(F("HEADER "));		// 0x10
-		if (intr & IRQ_LORA_TXDONE_MASK) Serial.print(F("TXDONE "));		// 0x08
-		if (intr & IRQ_LORA_CDDONE_MASK) Serial.print(F("CDDONE "));		// 0x04
-		if (intr & IRQ_LORA_FHSSCH_MASK) Serial.print(F("FHSSCH "));		// 0x02
-		if (intr & IRQ_LORA_CDDETD_MASK) Serial.print(F("CDDETD "));		// 0x01
+		if (intr & IRQ_LORA_RXTOUT_MASK) dbgp(F("RXTOUT "));		// 0x80
+		if (intr & IRQ_LORA_RXDONE_MASK) dbgp(F("RXDONE "));		// 0x40
+		if (intr & IRQ_LORA_CRCERR_MASK) dbgp(F("CRCERR "));		// 0x20
+		if (intr & IRQ_LORA_HEADER_MASK) dbgp(F("HEADER "));		// 0x10
+		if (intr & IRQ_LORA_TXDONE_MASK) dbgp(F("TXDONE "));		// 0x08
+		if (intr & IRQ_LORA_CDDONE_MASK) dbgp(F("CDDONE "));		// 0x04
+		if (intr & IRQ_LORA_FHSSCH_MASK) dbgp(F("FHSSCH "));		// 0x02
+		if (intr & IRQ_LORA_CDDETD_MASK) dbgp(F("CDDETD "));		// 0x01
 
-		if (intr == 0x00) Serial.print(F("  --  "));
+		if (intr == 0x00) dbgp(F("  --  "));
 			
-		Serial.print(F(", F="));
-		Serial.print(ifreq);
-		Serial.print(F(", SF="));
-		Serial.print(sf);
-		Serial.print(F(", E="));
-		Serial.print(_event);
+		dbgp(F(", F="));
+		dbgp(ifreq);
+		dbgp(F(", SF="));
+		dbgp(sf);
+		dbgp(F(", E="));
+		dbgp(_event);
 			
-		Serial.print(F(", S="));
-		//Serial.print(_state);
+		dbgp(F(", S="));
+		//dbgp(_state);
 		switch (_state) {
 			case S_INIT:
-				Serial.print(F("INIT "));
+				dbgp(F("INIT "));
 			break;
 			case S_SCAN:
-				Serial.print(F("SCAN "));
+				dbgp(F("SCAN "));
 			break;
 			case S_CAD:
-				Serial.print(F("CAD  "));
+				dbgp(F("CAD  "));
 			break;
 			case S_RX:
-				Serial.print(F("RX   "));
+				dbgp(F("RX   "));
 			break;
 			case S_TX:
-				Serial.print(F("TX   "));
+				dbgp(F("TX   "));
 			break;
 			case S_TXDONE:
-				Serial.print(F("TXDONE"));
+				dbgp(F("TXDONE"));
 			break;
 			default:
-				Serial.print(F(" -- "));
+				dbgp(F(" -- "));
 		}
-		Serial.print(F(", eT="));
-		Serial.print( micros() - eventTime );
-		Serial.print(F(", dT="));
-		Serial.print( micros() - doneTime );
-		Serial.println();
+		dbgp(F(", eT="));
+		dbgp( micros() - eventTime );
+		dbgp(F(", dT="));
+		dbgp( micros() - doneTime );
+		dbgpl();
 	}
 #endif
 }
@@ -182,11 +183,11 @@ int SerialName(char * a, String& response)
 		if (id == nodes[i].id) {
 #if DUSB >=1
 			if (( debug>=3 ) && ( pdebug & P_GUI )) {
-				Serial.print(F("G Name="));
-				Serial.print(nodes[i].nm);
-				Serial.print(F(" for node=0x"));
-				Serial.print(nodes[i].id,HEX);
-				Serial.println();
+				dbgp(F("G Name="));
+				dbgp(nodes[i].nm);
+				dbgp(F(" for node=0x"));
+				dbgp(nodes[i].id,HEX);
+				dbgpl();
 			}
 #endif
 			response += nodes[i].nm;
@@ -223,13 +224,13 @@ int inDecodes(char * id) {
 
 // ----------------------------------------------------------------------------
 // DIE is not use actively in the source code anymore.
-// It is replaced by a Serial.print command so we know that we have a problem
+// It is replaced by a dbgp command so we know that we have a problem
 // somewhere.
 // There are at least 3 other ways to restart the ESP. Pick one if you want.
 // ----------------------------------------------------------------------------
 void die(const char *s)
 {
-	Serial.println(s);
+	dbgpl(s);
 	if (debug >= 2)
 		Serial.flush();
 
@@ -245,10 +246,10 @@ void die(const char *s)
 // ----------------------------------------------------------------------------
 void gway_failed(const char *file, uint16_t line)
 {
-	Serial.print(F("Program failed in file: "));
-	Serial.print(file);
-	Serial.print(F(", line: "));
-	Serial.println(line);
+	dbgp(F("Program failed in file: "));
+	dbgp(file);
+	dbgp(F(", line: "));
+	dbgpl(line);
 	if (debug >= 2)
 		Serial.flush();
 }

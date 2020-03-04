@@ -19,6 +19,7 @@
 
 #include "asi-src/src/asi.h"
 
+#include "macro_helpers.h"
 #define LOGFILEREC 10
 #define LOGFILEMAX 10
 // ============================================================================
@@ -32,9 +33,9 @@
 void id_print (String id, String val) {
 #if DUSB>=1
 	if (( debug>=0 ) && ( pdebug & P_MAIN )) {
-		Serial.print(id);
-		Serial.print(F("=\t"));
-		Serial.println(val);
+		dbgp(id);
+		dbgp(F("=\t"));
+		dbgpl(val);
 	}
 #endif
 }
@@ -63,14 +64,14 @@ int readConfig(const char *fn, struct espGwayConfig *c) {
 
 	int tries = 0;
 #if DUSB>=1
-	Serial.println(F("readConfig:: Starting "));
+	dbgpl(F("readConfig:: Starting "));
 #endif
 	if (!SPIFFS.exists(fn)) {
 #if DUSB>=1
 		if (( debug>=0 ) && ( pdebug & P_MAIN ))
-		Serial.print(F("M ERR:: readConfig, file="));
-		Serial.print(fn);
-		Serial.println(F(" does not exist .. Formatting"));
+		dbgp(F("M ERR:: readConfig, file="));
+		dbgp(fn);
+		dbgpl(F(" does not exist .. Formatting"));
 #endif
 		// SPIFFS.format();
 		initConfig(c);
@@ -79,7 +80,7 @@ int readConfig(const char *fn, struct espGwayConfig *c) {
 
 	File f = SPIFFS.open(fn, "r");
 	if (!f) {
-		Serial.println(F("ERROR:: SPIFFS open failed"));
+		dbgpl(F("ERROR:: SPIFFS open failed"));
 		return(-1);
 	}
 
@@ -87,7 +88,7 @@ int readConfig(const char *fn, struct espGwayConfig *c) {
 		
 #if DUSB>=1
 		if (( debug>=0 ) && ( pdebug & P_MAIN )) {
-			Serial.print('.');
+			dbgp('.');
 		}
 #endif
 		// If we wait for more than 10 times, reformat the filesystem
@@ -97,7 +98,7 @@ int readConfig(const char *fn, struct espGwayConfig *c) {
 			f.close();
 #if DUSB>=1
 			if (( debug>=0 ) && ( pdebug & P_MAIN ))
-				Serial.println(F("Formatting"));
+				dbgpl(F("Formatting"));
 #endif
 			SPIFFS.format();
 			initConfig(c);
@@ -133,15 +134,15 @@ int readConfig(const char *fn, struct espGwayConfig *c) {
 			(*c).debug = (uint8_t) val.toInt();
 		}
 		else if (id == "PDEBUG") {								// pDebug Pattern
-			Serial.print(F("PDEBUG=")); Serial.println(val);
+			dbgp(F("PDEBUG=")); dbgpl(val);
 			(*c).pdebug = (uint8_t) val.toInt();
 		}
 		else if (id == "CAD") {									// CAD setting
-			Serial.print(F("CAD=")); Serial.println(val);
+			dbgp(F("CAD=")); dbgpl(val);
 			(*c).cad = (uint8_t) val.toInt();
 		}
 		else if (id == "HOP") {									// HOP setting
-			Serial.print(F("HOP=")); Serial.println(val);
+			dbgp(F("HOP=")); dbgpl(val);
 			(*c).hop = (uint8_t) val.toInt();
 		}
 		else if (id == "BOOTS") {								// BOOTS setting
@@ -207,10 +208,10 @@ int readConfig(const char *fn, struct espGwayConfig *c) {
 	f.close();
 #if DUSB>=1
 	if (debug>=0) {
-		Serial.println('#');
+		dbgpl('#');
 	}
 #endif
-	Serial.println();
+	dbgpl();
 	return(1);
 }
 
@@ -247,16 +248,16 @@ int writeGwayCfg(const char *fn) {
 int writeConfig(const char *fn, struct espGwayConfig *c) {
 
 	if (!SPIFFS.exists(fn)) {
-		Serial.print("WARNING:: writeConfig, file not exists, formatting ");
+		dbgp("WARNING:: writeConfig, file not exists, formatting ");
 		//SPIFFS.format();
 		initConfig(c);		// XXX make all initial declarations here if config vars need to have a value
-		Serial.println(fn);
+		dbgpl(fn);
 	}
 	File f = SPIFFS.open(fn, "w");
 	if (!f) {
-		Serial.print("ERROR:: writeConfig, open file=");
-		Serial.print(fn);
-		Serial.println();
+		dbgp("ERROR:: writeConfig, open file=");
+		dbgp(fn);
+		dbgpl();
 		return(-1);
 	}
 
@@ -319,8 +320,8 @@ void addLog(const unsigned char * line, int cnt)
 		sprintf(fn,"/log-%d", gwayConfig.logFileNo - LOGFILEMAX);
 #if DUSB>=1
 		if (( debug>=0 ) && ( pdebug & P_GUI )) {
-			Serial.print(F("G addLog:: Too many logfile, deleting="));
-			Serial.println(fn);
+			dbgp(F("G addLog:: Too many logfile, deleting="));
+			dbgpl(fn);
 		}
 #endif
 		SPIFFS.remove(fn);
@@ -335,11 +336,11 @@ void addLog(const unsigned char * line, int cnt)
 	if (!SPIFFS.exists(fn)) {
 #if DUSB>=1
 		if (( debug >= 1 ) && ( pdebug & P_GUI )) {
-			Serial.print(F("G ERROR:: addLog:: file="));
-			Serial.print(fn);
-			Serial.print(F(" does not exist .. rec="));
-			Serial.print(gwayConfig.logFileRec);
-			Serial.println();
+			dbgp(F("G ERROR:: addLog:: file="));
+			dbgp(fn);
+			dbgp(F(" does not exist .. rec="));
+			dbgp(gwayConfig.logFileRec);
+			dbgpl();
 		}
 #endif
 	}
@@ -348,8 +349,8 @@ void addLog(const unsigned char * line, int cnt)
 	if (!f) {
 #if DUSB>=1
 		if (( debug>=1 ) && ( pdebug & P_GUI )) {
-			Serial.println("G file open failed=");
-			Serial.println(fn);
+			dbgpl("G file open failed=");
+			dbgpl(fn);
 		}
 #endif
 		return;									// If file open failed, return
@@ -358,20 +359,20 @@ void addLog(const unsigned char * line, int cnt)
 	int i;
 #if DUSB>=1
 	if (( debug>=1 ) && ( pdebug & P_GUI )) {
-		Serial.print(F("G addLog:: fileno="));
-		Serial.print(gwayConfig.logFileNo);
-		Serial.print(F(", rec="));
-		Serial.print(gwayConfig.logFileRec);
+		dbgp(F("G addLog:: fileno="));
+		dbgp(gwayConfig.logFileNo);
+		dbgp(F(", rec="));
+		dbgp(gwayConfig.logFileRec);
 
-		Serial.print(F(": "));
+		dbgp(F(": "));
 
 		for (i=0; i< 12; i++) {				// The first 12 bytes contain non printable characters
-			Serial.print(line[i],HEX);
-			Serial.print(' ');
+			dbgp(line[i],HEX);
+			dbgp(' ');
 		}
-		Serial.print((char *) &line[i]);	// The rest if the buffer contains ascii
+		dbgp((char *) &line[i]);	// The rest if the buffer contains ascii
 
-		Serial.println();
+		dbgpl();
 	}
 #endif //DUSB
 
@@ -409,7 +410,7 @@ void printLog()
 			String s=f.readStringUntil('\n');
 			if (s.length() == 0) break;
 
-			Serial.println(s.substring(12));			// Skip the first 12 Gateway specific binary characters
+			dbgpl(s.substring(12));			// Skip the first 12 Gateway specific binary characters
 			yield();
 		}
 		i++;

@@ -66,7 +66,12 @@
 
 #include "protobuf/gw.pb.h"
 
+#define TINY_GSM_MODEM_SIM800
+#include <TinyGsmClient.h>
 #include <PubSubClient.h>
+
+#include "lcd.h"
+#include "macro_helpers.h"
 
 // Helpers para acceder a las settings
 #include "settings.h"
@@ -219,8 +224,11 @@ uint16_t frameCount = 0; // We write this to SPIFF file
 //
 int mutexSPI = 1;
 
+// Clientes
 WiFiClient espClient;
-PubSubClient mqtt_client(espClient);
+TinyGsm modem(Serial);
+TinyGsmClient gprsClient(modem);
+PubSubClient mqtt_client;
 
 // ----------------------------------------------------------------------------
 // FORWARD DECARATIONS
@@ -270,8 +278,8 @@ void printDigits(unsigned long digits)
 {
 	// utility function for digital clock display: prints leading 0
 	if (digits < 10)
-		Serial.print(F("0"));
-	Serial.print(digits);
+		dbgp(F("0"));
+	dbgp(digits);
 }
 
 // ----------------------------------------------------------------------------
@@ -281,8 +289,8 @@ void printHexDigit(uint8_t digit)
 {
 	// utility function for printing Hex Values with leading 0
 	if (digit < 0x10)
-		Serial.print('0');
-	Serial.print(digit, HEX);
+		dbgp('0');
+	dbgp(digit, HEX);
 }
 
 // ----------------------------------------------------------------------------
@@ -293,35 +301,35 @@ static void printTime()
 	switch (weekday())
 	{
 	case 1:
-		Serial.print(F("Sunday"));
+		dbgp(F("Sunday"));
 		break;
 	case 2:
-		Serial.print(F("Monday"));
+		dbgp(F("Monday"));
 		break;
 	case 3:
-		Serial.print(F("Tuesday"));
+		dbgp(F("Tuesday"));
 		break;
 	case 4:
-		Serial.print(F("Wednesday"));
+		dbgp(F("Wednesday"));
 		break;
 	case 5:
-		Serial.print(F("Thursday"));
+		dbgp(F("Thursday"));
 		break;
 	case 6:
-		Serial.print(F("Friday"));
+		dbgp(F("Friday"));
 		break;
 	case 7:
-		Serial.print(F("Saturday"));
+		dbgp(F("Saturday"));
 		break;
 	default:
-		Serial.print(F("ERROR"));
+		dbgp(F("ERROR"));
 		break;
 	}
-	Serial.print(F(" "));
+	dbgp(F(" "));
 	printDigits(hour());
-	Serial.print(F(":"));
+	dbgp(F(":"));
 	printDigits(minute());
-	Serial.print(F(":"));
+	dbgp(F(":"));
 	printDigits(second());
 	return;
 }
@@ -417,7 +425,7 @@ time_t getNtpTime()
 	if (!sendNtpRequest(ntpServer)) // Send the request for new time
 	{
 		if ((debug >= 0) && (pdebug & P_MAIN))
-			Serial.println(F("M sendNtpRequest failed"));
+			dbgpl(F("M sendNtpRequest failed"));
 		return (0);
 	}
 
@@ -462,7 +470,7 @@ time_t getNtpTime()
 #if DUSB >= 1
 	if ((debug >= 0) && (pdebug & P_MAIN))
 	{
-		Serial.println(F("M getNtpTime:: read failed"));
+		dbgpl(F("M getNtpTime:: read failed"));
 	}
 #endif
 	return (0); // return 0 if unable to get the time
@@ -508,7 +516,7 @@ int readUdp(int packetSize)
 	if (WlanConnect(10) < 0)
 	{
 #if DUSB >= 1
-		Serial.print(F("readdUdp: ERROR connecting to WLAN"));
+		dbgp(F("readdUdp: ERROR connecting to WLAN"));
 		if (debug >= 2)
 			Serial.flush();
 #endif
@@ -522,8 +530,8 @@ int readUdp(int packetSize)
 	if (packetSize > RX_BUFF_SIZE)
 	{
 #if DUSB >= 1
-		Serial.print(F("readUDP:: ERROR package of size: "));
-		Serial.println(packetSize);
+		dbgp(F("readUDP:: ERROR package of size: "));
+		dbgpl(packetSize);
 #endif
 		Udp.flush();
 		return (-1);
@@ -534,7 +542,7 @@ int readUdp(int packetSize)
 	if (Udp.read(buff_down, packetSize) < packetSize)
 	{
 #if DUSB >= 1
-		Serial.println(F("A readUsb:: Reading less chars"));
+		dbgpl(F("A readUsb:: Reading less chars"));
 		return (-1);
 #endif
 	}
@@ -551,7 +559,7 @@ int readUdp(int packetSize)
 #if DUSB >= 1
 		if (debug >= 0)
 		{
-			Serial.println(F("A readUdp:: NTP msg rcvd"));
+			dbgpl(F("A readUdp:: NTP msg rcvd"));
 		}
 #endif
 		gwayConfig.ntpErr++;
@@ -570,9 +578,9 @@ int readUdp(int packetSize)
 #if DUSB >= 1
 		if ((debug > 1) && (pdebug & P_MAIN))
 		{
-			Serial.print(F("M readUdp:: message waiting="));
-			Serial.print(ident);
-			Serial.println();
+			dbgp(F("M readUdp:: message waiting="));
+			dbgp(ident);
+			dbgpl();
 		}
 #endif
 		// now parse the message type from the server (if any)
@@ -586,19 +594,19 @@ int readUdp(int packetSize)
 #if DUSB >= 1
 			if (debug >= 1)
 			{
-				Serial.print(F("PKT_PUSH_DATA:: size "));
-				Serial.print(packetSize);
-				Serial.print(F(" From "));
-				Serial.print(remoteIpNo);
-				Serial.print(F(", port "));
-				Serial.print(remotePortNo);
-				Serial.print(F(", data: "));
+				dbgp(F("PKT_PUSH_DATA:: size "));
+				dbgp(packetSize);
+				dbgp(F(" From "));
+				dbgp(remoteIpNo);
+				dbgp(F(", port "));
+				dbgp(remotePortNo);
+				dbgp(F(", data: "));
 				for (int i = 0; i < packetSize; i++)
 				{
-					Serial.print(buff_down[i], HEX);
-					Serial.print(':');
+					dbgp(buff_down[i], HEX);
+					dbgp(':');
 				}
-				Serial.println();
+				dbgpl();
 				if (debug >= 2)
 					Serial.flush();
 			}
@@ -611,23 +619,23 @@ int readUdp(int packetSize)
 #if DUSB >= 1
 			if ((debug >= 2) && (pdebug & P_MAIN))
 			{
-				Serial.print(F("M PKT_PUSH_ACK:: size "));
-				Serial.print(packetSize);
-				Serial.print(F(" From "));
-				Serial.print(remoteIpNo);
-				Serial.print(F(", port "));
-				Serial.print(remotePortNo);
-				Serial.print(F(", token: "));
-				Serial.println(token, HEX);
-				Serial.println();
+				dbgp(F("M PKT_PUSH_ACK:: size "));
+				dbgp(packetSize);
+				dbgp(F(" From "));
+				dbgp(remoteIpNo);
+				dbgp(F(", port "));
+				dbgp(remotePortNo);
+				dbgp(F(", token: "));
+				dbgpl(token, HEX);
+				dbgpl();
 			}
 #endif
 			break;
 
 		case PKT_PULL_DATA: // 0x02 UP
 #if DUSB >= 1
-			Serial.print(F(" Pull Data"));
-			Serial.println();
+			dbgp(F(" Pull Data"));
+			dbgpl();
 #endif
 			break;
 
@@ -637,7 +645,7 @@ int readUdp(int packetSize)
 #if DUSB >= 1
 			if ((debug >= 0) && (pdebug & P_MAIN))
 			{
-				Serial.println(F("M readUdp:: PKT_PULL_RESP received"));
+				dbgpl(F("M readUdp:: PKT_PULL_RESP received"));
 			}
 #endif
 			//			lastTmst = micros();					// Store the tmst this package was received
@@ -652,7 +660,7 @@ int readUdp(int packetSize)
 #if DUSB >= 1
 				if (debug >= 0)
 				{
-					Serial.println(F("A readUdp:: Error: PKT_PULL_RESP sendPacket failed"));
+					dbgpl(F("A readUdp:: Error: PKT_PULL_RESP sendPacket failed"));
 				}
 #endif
 				return (-1);
@@ -676,7 +684,7 @@ int readUdp(int packetSize)
 #if DUSB >= 1
 			if ((debug >= 2) && (pdebug & P_MAIN))
 			{
-				Serial.println(F("M readUdp:: TX buff filled"));
+				dbgpl(F("M readUdp:: TX buff filled"));
 			}
 #endif
 			// Only send the PKT_PULL_ACK to the UDP socket that just sent the data!!!
@@ -685,7 +693,7 @@ int readUdp(int packetSize)
 			{
 #if DUSB >= 1
 				if (debug >= 0)
-					Serial.println("A readUdp:: Error: PKT_PULL_ACK UDP write");
+					dbgpl("A readUdp:: Error: PKT_PULL_ACK UDP write");
 #endif
 			}
 			else
@@ -693,8 +701,8 @@ int readUdp(int packetSize)
 #if DUSB >= 1
 				if ((debug >= 0) && (pdebug & P_TX))
 				{
-					Serial.print(F("M PKT_TX_ACK:: micros="));
-					Serial.println(micros());
+					dbgp(F("M PKT_TX_ACK:: micros="));
+					dbgpl(micros());
 				}
 #endif
 			}
@@ -704,7 +712,7 @@ int readUdp(int packetSize)
 #if DUSB >= 1
 				if ((debug >= 0) && (pdebug & P_MAIN))
 				{
-					Serial.println(F("M PKT_PULL_DATALL Error Udp.endpaket"));
+					dbgpl(F("M PKT_PULL_DATALL Error Udp.endpaket"));
 				}
 #endif
 			}
@@ -713,17 +721,17 @@ int readUdp(int packetSize)
 #if DUSB >= 1
 			if ((debug >= 1) && (pdebug & P_MAIN))
 			{
-				Serial.print(F("M PKT_PULL_RESP:: size "));
-				Serial.print(packetSize);
-				Serial.print(F(" From "));
-				Serial.print(remoteIpNo);
-				Serial.print(F(", port "));
-				Serial.print(remotePortNo);
-				Serial.print(F(", data: "));
+				dbgp(F("M PKT_PULL_RESP:: size "));
+				dbgp(packetSize);
+				dbgp(F(" From "));
+				dbgp(remoteIpNo);
+				dbgp(F(", port "));
+				dbgp(remotePortNo);
+				dbgp(F(", data: "));
 				data = buff_down + 4;
 				data[packetSize] = 0;
-				Serial.print((char *)data);
-				Serial.println(F("..."));
+				dbgp((char *)data);
+				dbgpl(F("..."));
 			}
 #endif
 			break;
@@ -732,19 +740,19 @@ int readUdp(int packetSize)
 #if DUSB >= 1
 			if ((debug >= 2) && (pdebug & P_MAIN))
 			{
-				Serial.print(F("M PKT_PULL_ACK:: size "));
-				Serial.print(packetSize);
-				Serial.print(F(" From "));
-				Serial.print(remoteIpNo);
-				Serial.print(F(", port "));
-				Serial.print(remotePortNo);
-				Serial.print(F(", data: "));
+				dbgp(F("M PKT_PULL_ACK:: size "));
+				dbgp(packetSize);
+				dbgp(F(" From "));
+				dbgp(remoteIpNo);
+				dbgp(F(", port "));
+				dbgp(remotePortNo);
+				dbgp(F(", data: "));
 				for (int i = 0; i < packetSize; i++)
 				{
-					Serial.print(buff_down[i], HEX);
-					Serial.print(':');
+					dbgp(buff_down[i], HEX);
+					dbgp(':');
 				}
-				Serial.println();
+				dbgpl();
 			}
 #endif
 			break;
@@ -757,16 +765,16 @@ int readUdp(int packetSize)
 
 #endif
 #if DUSB >= 1
-			Serial.print(F(", ERROR ident not recognized="));
-			Serial.println(ident);
+			dbgp(F(", ERROR ident not recognized="));
+			dbgpl(ident);
 #endif
 			break;
 		}
 #if DUSB >= 2
 		if (debug >= 1)
 		{
-			Serial.print(F("readUdp:: returning="));
-			Serial.println(packetSize);
+			dbgp(F("readUdp:: returning="));
+			dbgpl(packetSize);
 		}
 #endif
 		// For downstream messages
@@ -796,7 +804,7 @@ int sendUdp(IPAddress server, int port, uint8_t *msg, int length)
 #if DUSB >= 1
 		if ((debug >= 0) && (pdebug & P_MAIN))
 		{
-			Serial.print(F("M sendUdp: ERROR connecting to WiFi"));
+			dbgp(F("M sendUdp: ERROR connecting to WiFi"));
 			Serial.flush();
 		}
 #endif
@@ -811,7 +819,7 @@ int sendUdp(IPAddress server, int port, uint8_t *msg, int length)
 #if DUSB >= 1
 	if ((debug >= 3) && (pdebug & P_MAIN))
 	{
-		Serial.println(F("M WiFi connected"));
+		dbgpl(F("M WiFi connected"));
 	}
 #endif
 	if (!Udp.beginPacket(server, (int)port))
@@ -819,7 +827,7 @@ int sendUdp(IPAddress server, int port, uint8_t *msg, int length)
 #if DUSB >= 1
 		if ((debug >= 1) && (pdebug & P_MAIN))
 		{
-			Serial.println(F("M sendUdp:: Error Udp.beginPacket"));
+			dbgpl(F("M sendUdp:: Error Udp.beginPacket"));
 		}
 #endif
 		return (0);
@@ -832,7 +840,7 @@ int sendUdp(IPAddress server, int port, uint8_t *msg, int length)
 #if DUSB >= 1
 		if ((debug <= 1) && (pdebug & P_MAIN))
 		{
-			Serial.println(F("M sendUdp:: Error write"));
+			dbgpl(F("M sendUdp:: Error write"));
 		}
 #endif
 		Udp.endPacket(); // Close UDP
@@ -846,7 +854,7 @@ int sendUdp(IPAddress server, int port, uint8_t *msg, int length)
 #if DUSB >= 1
 		if (debug >= 1)
 		{
-			Serial.println(F("sendUdp:: Error Udp.endPacket"));
+			dbgpl(F("sendUdp:: Error Udp.endPacket"));
 			Serial.flush();
 		}
 #endif
@@ -871,15 +879,15 @@ bool UDPconnect()
 #if DUSB >= 1
 	if (debug >= 1)
 	{
-		Serial.print(F("Local UDP port="));
-		Serial.println(localPort);
+		dbgp(F("Local UDP port="));
+		dbgpl(localPort);
 	}
 #endif
 	if (Udp.begin(localPort) == 1)
 	{
 #if DUSB >= 1
 		if (debug >= 1)
-			Serial.println(F("Connection successful"));
+			dbgpl(F("Connection successful"));
 #endif
 		ret = true;
 	}
@@ -887,7 +895,7 @@ bool UDPconnect()
 	{
 #if DUSB >= 1
 		if (debug >= 1)
-			Serial.println("Connection failed");
+			dbgpl("Connection failed");
 #endif
 	}
 	return (ret);
@@ -942,7 +950,7 @@ void pullData()
 #if DUSB >= 1
 	if (pullPtr != pullDataReq)
 	{
-		Serial.println(F("pullPtr != pullDatReq"));
+		dbgpl(F("pullPtr != pullDatReq"));
 		Serial.flush();
 	}
 
@@ -955,15 +963,15 @@ void pullData()
 	if ((debug >= 2) && (pdebug & P_MAIN))
 	{
 		yield();
-		Serial.print(F("M PKT_PULL_DATA request, len=<"));
-		Serial.print(pullIndex);
-		Serial.print(F("> "));
+		dbgp(F("M PKT_PULL_DATA request, len=<"));
+		dbgp(pullIndex);
+		dbgp(F("> "));
 		for (i = 0; i < pullIndex; i++)
 		{
-			Serial.print(pullDataReq[i], HEX); // debug: display JSON stat
-			Serial.print(':');
+			dbgp(pullDataReq[i], HEX); // debug: display JSON stat
+			dbgp(':');
 		}
-		Serial.println();
+		dbgpl();
 		if (debug >= 2)
 			Serial.flush();
 	}
@@ -1032,16 +1040,16 @@ void sendstat()
 #if DUSB >= 1
 	if ((debug >= 2) && (pdebug & P_MAIN))
 	{
-		Serial.print(F("M stat update: <"));
-		Serial.print(stat_index);
-		Serial.print(F("> "));
-		Serial.println((char *)(status_report + 12)); // DEBUG: display JSON stat
+		dbgp(F("M stat update: <"));
+		dbgp(stat_index);
+		dbgp(F("> "));
+		dbgpl((char *)(status_report + 12)); // DEBUG: display JSON stat
 	}
 #endif
 	if (stat_index > STATUS_SIZE)
 	{
 #if DUSB >= 1
-		Serial.println(F("A sendstat:: ERROR buffer too big"));
+		dbgpl(F("A sendstat:: ERROR buffer too big"));
 #endif
 		return;
 	}
@@ -1081,20 +1089,20 @@ void setup()
 
 #ifdef ESP32
 #if DUSB >= 1
-	Serial.print(F("ESP32 defined, freq="));
+	dbgp(F("ESP32 defined, freq="));
 #if _LFREQ == 433
-	Serial.print(freqs[0]);
-	Serial.print(F(" EU433"));
+	dbgp(freqs[0]);
+	dbgp(F(" EU433"));
 #elif _LFREQ == 868
-	Serial.print(freqs[0]);
-	Serial.print(F(" EU868"));
+	dbgp(freqs[0]);
+	dbgp(F(" EU868"));
 #endif
-	Serial.println();
+	dbgpl();
 #endif
 #endif
 #ifdef ARDUINO_ARCH_ESP32
 #if DUSB >= 1
-	Serial.println(F("ARDUINO_ARCH_ESP32 defined"));
+	dbgpl(F("ARDUINO_ARCH_ESP32 defined"));
 #endif
 #endif
 
@@ -1105,7 +1113,7 @@ void setup()
 
 	if (SPIFFS.begin())
 	{
-		Serial.println(F("SPIFFS init success"));
+		dbgpl(F("SPIFFS init success"));
 	}
 	else
 	{
@@ -1115,23 +1123,23 @@ void setup()
 #if DUSB >= 1
 	if ((debug >= 0) && (pdebug & P_MAIN))
 	{
-		Serial.println(F("M Format Filesystem ... "));
+		dbgpl(F("M Format Filesystem ... "));
 	}
 #endif
 	SPIFFS.format(); // Normally disabled. Enable only when SPIFFS corrupt
 #if DUSB >= 1
 	if ((debug >= 0) && (pdebug & P_MAIN))
 	{
-		Serial.println(F("Done"));
+		dbgpl(F("Done"));
 	}
 #endif
 #endif
 
-	Serial.print(F("Assert="));
+	dbgp(F("Assert="));
 #if defined CFG_noassert
-	Serial.println(F("No Asserts"));
+	dbgpl(F("No Asserts"));
 #else
-	Serial.println(F("Do Asserts"));
+	dbgpl(F("Do Asserts"));
 #endif
 
 #if OLED >= 1
@@ -1143,8 +1151,8 @@ void setup()
 #if DUSB >= 1
 	if (debug >= 1)
 	{
-		Serial.print(F("debug="));
-		Serial.println(debug);
+		dbgp(F("debug="));
+		dbgpl(debug);
 		yield();
 	}
 #endif
@@ -1159,18 +1167,18 @@ void setup()
 
 	sprintf(MAC_char, "%02x:%02x:%02x:%02x:%02x:%02x",
 			MAC_array[0], MAC_array[1], MAC_array[2], MAC_array[3], MAC_array[4], MAC_array[5]);
-	Serial.print("MAC: ");
-	Serial.print(MAC_char);
-	Serial.print(F(", len="));
-	Serial.println(strlen(MAC_char));
+	dbgp("MAC: ");
+	dbgp(MAC_char);
+	dbgp(F(", len="));
+	dbgpl(strlen(MAC_char));
 
 	// We start by connecting to a WiFi network, set hostname
 	char hostname[12];
 
 	// Setup WiFi UDP connection. Give it some time and retry x times..
 	//while (WlanConnect(0) <= 0) {
-	//	Serial.print(F("Error Wifi network connect "));
-	//	Serial.println();
+	//	dbgp(F("Error Wifi network connect "));
+	//	dbgpl();
 	//	yield();
 	//}
 
@@ -1183,17 +1191,17 @@ void setup()
 	//	wifi_station_set_hostname( hostname );
 	//#endif
 
-	//	Serial.print(F("Host "));
+	//	dbgp(F("Host "));
 	//#if ESP32_ARCH==1
-	//	Serial.print(WiFi.getHostname());
+	//	dbgp(WiFi.getHostname());
 	//#else
-	//	Serial.print(wifi_station_get_hostname());
+	//	dbgp(wifi_station_get_hostname());
 	//#endif
-	//	Serial.print(F(" WiFi Connected to "));
-	//	Serial.print(WiFi.SSID());
-	//	Serial.print(F(" on IP="));
-	//	Serial.print(WiFi.localIP());
-	//	Serial.println();
+	//	dbgp(F(" WiFi Connected to "));
+	//	dbgp(WiFi.SSID());
+	//	dbgp(F(" on IP="));
+	//	dbgp(WiFi.localIP());
+	//	dbgpl();
 	//	delay(200);
 
 	asi_begin();
@@ -1203,13 +1211,13 @@ void setup()
 	int8_t res = WiFi.waitForConnectResult();
 	if (res != WL_CONNECTED)
 	{
-		Serial.println("No conectado");
+		dbgpl("No conectado");
 	}
 	// If we are here we are connected to WLAN
 	// So now test the UDP function
 	if (!UDPconnect())
 	{
-		Serial.println(F("Error UDPconnect"));
+		dbgpl(F("Error UDPconnect"));
 	}
 	delay(200);
 
@@ -1233,7 +1241,7 @@ void setup()
 	// We choose the Gateway ID to be the Ethernet Address of our Gateway card
 	// display results of getting hardware address
 	//
-	Serial.print("Gateway ID: ");
+	dbgp("Gateway ID: ");
 	printHexDigit(MAC_array[0]);
 	printHexDigit(MAC_array[1]);
 	printHexDigit(MAC_array[2]);
@@ -1243,11 +1251,11 @@ void setup()
 	printHexDigit(MAC_array[4]);
 	printHexDigit(MAC_array[5]);
 
-	Serial.print(", Listening at SF");
-	Serial.print(global_sf);
-	Serial.print(" on ");
-	Serial.print((double)freq / 1000000);
-	Serial.println(" Mhz.");
+	dbgp(", Listening at SF");
+	dbgp(global_sf);
+	dbgp(" on ");
+	dbgp((double)freq / 1000000);
+	dbgpl(" Mhz.");
 
 	if (!WiFi.hostByName(NTP_TIMESERVER, ntpServer)) // Get IP address of Timeserver
 	{
@@ -1289,7 +1297,7 @@ void setup()
 	{
 #if DUSB >= 1
 		if ((debug >= 0) && (pdebug & P_MAIN))
-			Serial.println(F("M setupTime:: Time not set (yet)"));
+			dbgpl(F("M setupTime:: Time not set (yet)"));
 #endif
 		delay(500);
 		time_t newTime;
@@ -1300,13 +1308,13 @@ void setup()
 	// When we are here we succeeded in getting the time
 	startTime = now(); // Time in seconds
 #if DUSB >= 1
-	Serial.print("Time: ");
+	dbgp("Time: ");
 	printTime();
-	Serial.println();
+	dbgpl();
 #endif
 	writeGwayCfg(CONFIGFILE);
 #if DUSB >= 1
-	Serial.println(F("Gateway configuration saved"));
+	dbgpl(F("Gateway configuration saved"));
 #endif
 #endif //NTP_INTR
 
@@ -1361,7 +1369,10 @@ void setup()
 
 	mqtt_client.setServer(settings_mqtt_server(), 1883);
 	mqtt_client.setCallback(mqtt_callback);
-	Serial.println(F("--------------------------------------"));
+
+	lcd_init();
+
+	dbgpl(F("--------------------------------------"));
 } //setup
 
 // ----------------------------------------------------------------------------
@@ -1382,14 +1393,33 @@ void setup()
 
 volatile uint8_t mqtt_down_flag = 0;
 
+#define TINY_GSM_MODEM_SIM800
+
 void loop()
 {
 	uint32_t uSeconds; // micro seconds
 	int packetSize;
 	uint32_t nowSeconds = now();
 	S_PROTOCOL protocolo = settings_protocol();
+	S_BACKBONE backbone = settings_backbone();
 
-	asi_loop();
+	// Cambiar el cliente para mqtt
+	/* Todo la configuracion gprs pasa por aca */
+	if (backbone == BACKBONE_GPRS)
+	{
+		mqtt_client.setClient(gprsClient);
+		if (!gprs_connected())
+		{
+			gprs_init();
+		}
+	}
+	else if (backbone == BACKBONE_WIFI)
+	{
+		mqtt_client.setClient(espClient);
+	}
+
+	asi_loop(); //Interface Loop
+
 	// check for event value, which means that an interrupt has arrived.
 	// In this case we handle the interrupt ( e.g. message received)
 	// in userspace in loop().
@@ -1399,8 +1429,8 @@ void loop()
 		//mqtt_client.loop();
 		if (mqtt_down_flag == 1)
 		{
-			Serial.print("mqtt_down ");
-			Serial.println(_state);
+			dbgp("mqtt_down ");
+			dbgpl(_state);
 			mqtt_down_flag = 0;
 			_state = S_TX;
 		}
@@ -1421,9 +1451,9 @@ void loop()
 #if DUSB >= 1
 		if ((debug >= 1) && (pdebug & P_MAIN))
 		{
-			Serial.print("M REINIT:: ");
-			Serial.print(_MSG_INTERVAL);
-			Serial.print(F(" "));
+			dbgp("M REINIT:: ");
+			dbgp(_MSG_INTERVAL);
+			dbgp(F(" "));
 			SerialStat(0);
 		}
 #endif
@@ -1465,18 +1495,46 @@ void loop()
 	else
 		yield();
 
+
+//################################################ DOWNSTREAM UDP ########################################
+	if ((protocolo == SEMTECH_PF_UDP) && (WiFi.status() == WL_CONNECTED))
+	{
+		while ((packetSize = Udp.parsePacket()) > 0)
+		{
+#if DUSB >= 2
+			dbgpl(F("loop:: readUdp calling"));
+#endif
+			// DOWNSTREAM
+			// Packet may be PKT_PUSH_ACK (0x01), PKT_PULL_ACK (0x03) or PKT_PULL_RESP (0x04)
+			// This command is found in byte 4 (buffer[3])
+			if (readUdp(packetSize) <= 0)
+			{
+#if DUSB >= 1
+				if ((debug > 0) && (pdebug & P_MAIN))
+					dbgpl(F("M readUDP error"));
+#endif
+				break;
+			}
+			// Now we know we succesfully received message from host
+			else
+			{
+				//_event=1;								// Could be done double if more messages received
+			}
+		}
+	}
+
 	// ########################## LAN Reconect ##################################################
 	// If we are not connected, try to connect.
 	// We will not read Udp in this loop cycle then
 
-	if (WlanConnect(1) < 0)
+	/*if ((WlanConnect(1) < 0) || (backbone == BACKBONE_GPRS))
 	{
 #if DUSB >= 1
 		if ((debug >= 0) && (pdebug & P_MAIN))
-			Serial.println(F("M ERROR reconnect WLAN"));
+			dbgpl(F("M ERROR reconnect WLAN"));
 #endif
 		yield();
-		return; // Exit loop if no WLAN connected
+		//return; // Exit loop if no WLAN connected
 	}
 	else
 	{
@@ -1492,7 +1550,7 @@ void loop()
 			while ((packetSize = Udp.parsePacket()) > 0)
 			{
 #if DUSB >= 2
-				Serial.println(F("loop:: readUdp calling"));
+				dbgpl(F("loop:: readUdp calling"));
 #endif
 				// DOWNSTREAM
 				// Packet may be PKT_PUSH_ACK (0x01), PKT_PULL_ACK (0x03) or PKT_PULL_RESP (0x04)
@@ -1501,7 +1559,7 @@ void loop()
 				{
 #if DUSB >= 1
 					if ((debug > 0) && (pdebug & P_MAIN))
-						Serial.println(F("M readUDP error"));
+						dbgpl(F("M readUDP error"));
 #endif
 					break;
 				}
@@ -1512,7 +1570,7 @@ void loop()
 				}
 			}
 		}
-	}
+	}*/
 
 	// ########################## END LAN Reconect ##################################################
 
@@ -1526,7 +1584,7 @@ void loop()
 #if DUSB >= 1
 		if ((debug >= 1) && (pdebug & P_MAIN))
 		{
-			Serial.print(F("M STAT:: ..."));
+			dbgp(F("M STAT:: ..."));
 			Serial.flush();
 		}
 #endif
@@ -1542,7 +1600,7 @@ void loop()
 #if DUSB >= 1
 		if ((debug >= 1) && (pdebug & P_MAIN))
 		{
-			Serial.println(F(" done"));
+			dbgpl(F(" done"));
 			if (debug >= 2)
 				Serial.flush();
 		}
@@ -1565,7 +1623,7 @@ void loop()
 			if (sensorPacket() < 0)
 			{
 #if DUSB >= 1
-				Serial.println(F("sensorPacket: Error"));
+				dbgpl(F("sensorPacket: Error"));
 #endif
 			}
 		}
@@ -1586,7 +1644,7 @@ void loop()
 #if DUSB >= 1
 			if ((debug >= 2) && (pdebug & P_MAIN))
 			{
-				Serial.println(F("M PULL"));
+				dbgpl(F("M PULL"));
 				if (debug >= 1)
 					Serial.flush();
 			}
@@ -1629,6 +1687,7 @@ void loop()
 		mqtt_client.loop();
 	}
 
+	lcd_update(cp_nb_rx_rcv, cp_nb_rx_ok, freq, global_sf);
 } //loop
 
 void lora_settings_reconfig(int sf, int bw, uint32_t frec)
@@ -1646,7 +1705,7 @@ void lora_settings_reconfig(int sf, int bw, uint32_t frec)
 	ifreq = i;
 	rxLoraModem();
 
-	Serial.println("Reconfig LORA");
+	dbgpl("Reconfig LORA");
 }
 
 bool decode_string(pb_istream_t *stream, const pb_field_t *field, void **arg)
@@ -1695,8 +1754,6 @@ bool pb_timing_context_decode(pb_istream_t *stream, const pb_field_t *field, voi
 	return true;
 }
 
-
-
 uint8_t downlink_size;
 
 bool pb_downlink_id_decode(pb_istream_t *stream, const pb_field_t *field, void **arg)
@@ -1719,11 +1776,11 @@ bool pb_downlink_id_decode(pb_istream_t *stream, const pb_field_t *field, void *
 void mqtt_callback(char *topic, byte *payload, unsigned int length)
 {
 
-	Serial.print("Message arrived [");
-	Serial.print(topic);
-	Serial.print("] Length ");
-	Serial.print(length);
-	Serial.println();
+	dbgp("Message arrived [");
+	dbgp(topic);
+	dbgp("] Length ");
+	dbgp(length);
+	dbgpl();
 
 	gw_DownlinkFrame dm = gw_DownlinkFrame_init_zero;
 
@@ -1741,8 +1798,8 @@ void mqtt_callback(char *topic, byte *payload, unsigned int length)
 	bool status = pb_decode(&stream, gw_DownlinkFrame_fields, &dm);
 	if (!status)
 	{
-		Serial.print("Decoding failed: ");
-		Serial.println(PB_GET_ERROR(&stream));
+		dbgp("Decoding failed: ");
+		dbgpl(PB_GET_ERROR(&stream));
 		return;
 	}
 
@@ -1759,24 +1816,24 @@ void mqtt_callback(char *topic, byte *payload, unsigned int length)
 	LoraDown.fff = dm.tx_info.frequency;
 	LoraDown.payLoad = payLoad;
 
-	Serial.print("bw ");
-	Serial.println(LoraDown.bw);
-	Serial.print("sfTx ");
-	Serial.println(LoraDown.sfTx);
-	Serial.print("tmst ");
-	Serial.println(LoraDown.tmst);
-	Serial.print("DelayS ");
-	Serial.println((long)dm.tx_info.timing_info.delay_timing_info.delay.seconds);
-	Serial.print("DelayN ");
-	Serial.println((long)dm.tx_info.timing_info.delay_timing_info.delay.nanos);
+	dbgp("bw ");
+	dbgpl(LoraDown.bw);
+	dbgp("sfTx ");
+	dbgpl(LoraDown.sfTx);
+	dbgp("tmst ");
+	dbgpl(LoraDown.tmst);
+	dbgp("DelayS ");
+	dbgpl((long)dm.tx_info.timing_info.delay_timing_info.delay.seconds);
+	dbgp("DelayN ");
+	dbgpl((long)dm.tx_info.timing_info.delay_timing_info.delay.nanos);
 
-	Serial.print("UplinkTimingContext ");
-	Serial.println((unsigned long)uplink_timing_context);
+	dbgp("UplinkTimingContext ");
+	dbgpl((unsigned long)uplink_timing_context);
 
-	Serial.print("fff ");
-	Serial.println(LoraDown.fff);
-	Serial.print("length ");
-	Serial.println(LoraDown.payLength);
+	dbgp("fff ");
+	dbgpl(LoraDown.fff);
+	dbgp("length ");
+	dbgpl(LoraDown.payLength);
 
 	mqtt_send_ack(downlink_id);
 	/*gw_GatewayStats statsMsg = gw_GatewayStats_init_zero;
@@ -1789,12 +1846,12 @@ void mqtt_callback(char *topic, byte *payload, unsigned int length)
 	bool status = pb_decode(&stream, gw_GatewayStats_fields, &statsMsg);
 	if (!status)
         {
-            Serial.print("Decoding failed: "); Serial.println(PB_GET_ERROR(&stream));
+            dbgp("Decoding failed: "); dbgpl(PB_GET_ERROR(&stream));
             return;
         }
-	Serial.println(realIp);
-	Serial.println("rx_pack");
-	Serial.println((statsMsg.rx_packets_received));*/
+	dbgpl(realIp);
+	dbgpl("rx_pack");
+	dbgpl((statsMsg.rx_packets_received));*/
 }
 
 bool pb_set_gateway_id(pb_ostream_t *stream, const pb_field_t *field, void *const *arg)
@@ -1859,15 +1916,17 @@ bool pb_set_timing_context(pb_ostream_t *stream, const pb_field_t *field, void *
 
 bool pb_set_downlink_id(pb_ostream_t *stream, const pb_field_t *field, void *const *arg)
 {
-	
+
 	char *str = (char *)*arg;
 
-	Serial.println("ID enc");
-	Serial.println((uint32_t )*arg);
-	for(uint8_t i=0; i<downlink_size; i++){
-		if (str[i]<=0xF) Serial.print('0');
-		Serial.print(str[i], HEX);
-		Serial.print(' ');
+	dbgpl("ID enc");
+	dbgpl((uint32_t)*arg);
+	for (uint8_t i = 0; i < downlink_size; i++)
+	{
+		if (str[i] <= 0xF)
+			dbgp('0');
+		dbgp(str[i], HEX);
+		dbgp(' ');
 	}
 
 	if (!pb_encode_tag_for_field(stream, field))
@@ -1875,7 +1934,6 @@ bool pb_set_downlink_id(pb_ostream_t *stream, const pb_field_t *field, void *con
 
 	return pb_encode_string(stream, (uint8_t *)str, downlink_size);
 }
-
 
 void mqtt_sendStat()
 {
@@ -1902,8 +1960,8 @@ void mqtt_sendStat()
 	pb_ostream_t stream = pb_ostream_from_buffer(buffer, sizeof(buffer));
 	if (!pb_encode(&stream, gw_GatewayStats_fields, &statsMsg))
 	{
-		Serial.print("Encoding failed: ");
-		Serial.println(PB_GET_ERROR(&stream));
+		dbgp("Encoding failed: ");
+		dbgpl(PB_GET_ERROR(&stream));
 		return;
 	}
 
@@ -1946,45 +2004,46 @@ void mqtt_sendUplink(struct LoraUp up_packet)
 
 	uint8_t buffer[200];
 
-	Serial.println("Encoding");
+	dbgpl("Encoding");
 	pb_ostream_t stream = pb_ostream_from_buffer(buffer, sizeof(buffer));
 	if (!pb_encode(&stream, gw_UplinkFrame_fields, &upMsg))
 	{
-		Serial.print("Encoding failed: ");
-		Serial.println(PB_GET_ERROR(&stream));
+		dbgp("Encoding failed: ");
+		dbgpl(PB_GET_ERROR(&stream));
 		return;
 	}
-	Serial.println("Publishings");
+	dbgpl("Publishings");
 	mqtt_client.publish("gateway/4c11aeffff045b23/event/up", buffer, stream.bytes_written);
 }
 
-void mqtt_send_ack(uint8_t * downId){
+void mqtt_send_ack(uint8_t *downId)
+{
 	gw_DownlinkTXAck dwack = gw_DownlinkTXAck_init_zero;
 
 	dwack.gateway_id.funcs.encode = pb_set_gateway_id;
-	
+
 	dwack.downlink_id.arg = downId;
 	dwack.downlink_id.funcs.encode = pb_set_downlink_id;
 
 	uint8_t buffer[100];
 
-	/*Serial.print("ACK Down ID ");
+	/*dbgp("ACK Down ID ");
 	for(uint8_t i=0; i<downlink_size; i++){
-		if (downId[i]<=0xF) Serial.print('0');
-		Serial.print(downId[i], HEX);
-		Serial.print(' ');
+		if (downId[i]<=0xF) dbgp('0');
+		dbgp(downId[i], HEX);
+		dbgp(' ');
 	}*/
 
-	Serial.println("Encoding");
-	Serial.println((uint32_t )*downId);
+	dbgpl("Encoding");
+	dbgpl((uint32_t)*downId);
 	pb_ostream_t stream = pb_ostream_from_buffer(buffer, sizeof(buffer));
 	if (!pb_encode(&stream, gw_DownlinkTXAck_fields, &dwack))
 	{
-		Serial.print("Encoding failed: ");
-		Serial.println(PB_GET_ERROR(&stream));
+		dbgp("Encoding failed: ");
+		dbgpl(PB_GET_ERROR(&stream));
 		return;
 	}
-	Serial.println("PublishingsACK");
+	dbgpl("PublishingsACK");
 	mqtt_client.publish("gateway/4c11aeffff045b23/event/ack", buffer, stream.bytes_written);
 }
 
@@ -1993,27 +2052,94 @@ void mqtt_reconnect()
 	// Loop until we're reconnected
 	if (!mqtt_client.connected())
 	{
-		Serial.print("Attempting MQTT connection..");
+		dbgp("Attempting MQTT connection..");
 		// Create a random client ID
 		String clientId = "ESP8266Client-";
 		clientId += String(random(0xffff), HEX);
 		// Attempt to connect
 		if (mqtt_client.connect(clientId.c_str(), "chirpstack_gw", ""))
 		{
-			Serial.println("connected ");
+			dbgpl("connected ");
 			// Once connected, publish an announcement...
 			// mqtt_client.publish("outTopic", "hello world");
 			// ... and resubscribe
-			Serial.print(mqtt_client.subscribe("gateway/4c11aeffff045b23/command/down"));
+			dbgp(mqtt_client.subscribe("gateway/4c11aeffff045b23/command/down"));
 			//mqtt_client.subscribe("gateway/4c11aeffff045b23/command/+");
 		}
 		else
 		{
-			Serial.print("failed, rc=");
-			Serial.print(mqtt_client.state());
-			Serial.println(" try again in 5 seconds");
+			dbgp("failed, rc=");
+			dbgp(mqtt_client.state());
+			dbgpl(" try again in 5 seconds");
 			// Wait 5 seconds before retrying
 			// delay(5000);
 		}
 	}
+}
+
+void gprs_init()
+{
+
+	// !!!!!!!!!!!
+	// Set your reset, enable, power pins here
+	// !!!!!!!!!!!
+
+	// Restart takes quite some time
+	// To skip it, call init() instead of restart()
+	// SerialMon.println("Initializing modem...");
+	lcd_line3("Restarting GPRS...");
+	modem.restart();
+	// modem.init();
+
+	String modemInfo = modem.getModemInfo();
+	lcd_line3(modemInfo.c_str());
+
+	//SerialMon.print("Modem Info: ");
+	//SerialMon.println(modemInfo);
+
+	// Unlock your SIM card with a PIN if needed
+	/* if ( GSM_PIN && modem.getSimStatus() != 3 ) {
+    modem.simUnlock(GSM_PIN);
+  }*/
+
+	modem.gprsConnect(settings_apn(), settings_gprs_user(), settings_gprs_pass());
+
+	// SerialMon.print("Waiting for network...");
+	if (!modem.waitForNetwork())
+	{
+		// SerialMon.println(" fail");
+		// delay(10000);
+		return;
+	}
+
+	// SerialMon.println(" success");
+
+	if (modem.isNetworkConnected())
+	{
+		// SerialMon.println("Network connected");
+		lcd_line3("GPRS Nwrk CONN");
+	}
+
+	// GPRS connection parameters are usually set after network registration
+	//SerialMon.print(F("Connecting to "));
+	//SerialMon.print(apn);
+	if (!modem.gprsConnect(settings_apn(), settings_gprs_user(), settings_gprs_pass()))
+	{
+		//SerialMon.println(" fail");
+		// delay(10000);
+		lcd_line3("GPRS CONN Fail");
+		return;
+	}
+	//SerialMon.println(" success");
+
+	if (modem.isGprsConnected())
+	{
+		// SerialMon.println("GPRS connected");
+		lcd_line3("GPRS CONN Ok");
+	}
+}
+
+bool gprs_connected()
+{
+	return modem.isGprsConnected();
 }

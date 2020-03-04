@@ -30,14 +30,16 @@
 // Parameters: <none>
 // Return value: Returns 1 when still WL_CONNETED, otherwise returns 0
 // ----------------------------------------------------------------------------
+#include "macro_helpers.h"
+
 int WlanStatus() {
 
 	switch (WiFi.status()) {
 		case WL_CONNECTED:
 #if DUSB>=1
 			if ( debug>=0 ) {
-				Serial.print(F("A WlanStatus:: CONNECTED to "));				// 3
-				Serial.println(WiFi.SSID());
+				dbgp(F("A WlanStatus:: CONNECTED to "));				// 3
+				dbgpl(WiFi.SSID());
 			}
 #endif
 			WiFi.setAutoReconnect(true);				// Reconenct to this AP if DISCONNECTED
@@ -49,8 +51,8 @@ int WlanStatus() {
 		case WL_DISCONNECTED:
 #if DUSB>=1
 			if ( debug>=0 ) {
-				Serial.print(F("A WlanStatus:: DISCONNECTED, IP="));			// 6
-				Serial.println(WiFi.localIP());
+				dbgp(F("A WlanStatus:: DISCONNECTED, IP="));			// 6
+				dbgpl(WiFi.localIP());
 			}
 #endif
 			//while (! WiFi.isConnected() ) {
@@ -64,7 +66,7 @@ int WlanStatus() {
 		case WL_IDLE_STATUS:
 #if DUSB>=1
 			if ( debug>=0 ) {
-				Serial.println(F("A WlanStatus:: IDLE"));					// 0
+				dbgpl(F("A WlanStatus:: IDLE"));					// 0
 			}
 #endif
 			break;
@@ -74,14 +76,14 @@ int WlanStatus() {
 		case WL_NO_SSID_AVAIL:
 #if DUSB>=1
 			if ( debug>=0 )
-				Serial.println(F("WlanStatus:: NO SSID"));					// 1
+				dbgpl(F("WlanStatus:: NO SSID"));					// 1
 #endif
 			break;
 			
 		case WL_CONNECT_FAILED:
 #if DUSB>=1
 			if ( debug>=0 )
-				Serial.println(F("A WlanStatus:: FAILED"));					// 4
+				dbgpl(F("A WlanStatus:: FAILED"));					// 4
 #endif
 			break;
 			
@@ -89,7 +91,7 @@ int WlanStatus() {
 		case WL_SCAN_COMPLETED:
 #if DUSB>=1
 			if ( debug>=0 )
-				Serial.println(F("A WlanStatus:: SCAN COMPLETE"));			// 2
+				dbgpl(F("A WlanStatus:: SCAN COMPLETE"));			// 2
 #endif
 			break;
 			
@@ -97,7 +99,7 @@ int WlanStatus() {
 		case WL_CONNECTION_LOST:
 #if DUSB>=1
 			if ( debug>=0 )
-				Serial.println(F("A WlanStatus:: LOST"));					// 5
+				dbgpl(F("A WlanStatus:: LOST"));					// 5
 #endif
 			break;
 			
@@ -106,15 +108,15 @@ int WlanStatus() {
 		case WL_NO_SHIELD:
 #if DUSB>=1
 			if ( debug>=0 )
-				Serial.println(F("A WlanStatus:: WL_NO_SHIELD"));				// 
+				dbgpl(F("A WlanStatus:: WL_NO_SHIELD"));				// 
 #endif
 			break;
 			
 		default:
 #if DUSB>=1
 			if ( debug>=0 ) {
-				Serial.print(F("A WlanStatus Error:: code="));
-				Serial.println(WiFi.status());								// 255 means ERROR
+				dbgp(F("A WlanStatus Error:: code="));
+				dbgpl(WiFi.status());								// 255 means ERROR
 			}
 #endif
 			break;
@@ -152,16 +154,16 @@ int WlanReadWpa() {
 	ssid.toCharArray(ssidBuf,ssid.length()+1);
 	char passBuf[pass.length()+1];
 	pass.toCharArray(passBuf,pass.length()+1);
-	Serial.print(F("WlanReadWpa: ")); Serial.print(ssidBuf); Serial.print(F(", ")); Serial.println(passBuf);
+	dbgp(F("WlanReadWpa: ")); dbgp(ssidBuf); dbgp(F(", ")); dbgpl(passBuf);
 	
 	strcpy(wpa[0].login, ssidBuf);				// XXX changed from wpa[0][0] = ssidBuf
 	strcpy(wpa[0].passw, passBuf);
 	
-	Serial.print(F("WlanReadWpa: <")); 
-	Serial.print(wpa[0].login); 				// XXX
-	Serial.print(F(">, <")); 
-	Serial.print(wpa[0].passw);
-	Serial.println(F(">"));
+	dbgp(F("WlanReadWpa: <")); 
+	dbgp(wpa[0].login); 				// XXX
+	dbgp(F(">, <")); 
+	dbgp(wpa[0].passw);
+	dbgpl(F(">"));
 #endif
 
 }
@@ -175,11 +177,11 @@ int WlanWriteWpa( char* ssid, char *pass) {
 
 #if DUSB>=1
 	if (( debug >=0 ) && ( pdebug & P_MAIN )) {
-		Serial.print(F("M WlanWriteWpa:: ssid=")); 
-		Serial.print(ssid);
-		Serial.print(F(", pass=")); 
-		Serial.print(pass); 
-		Serial.println();
+		dbgp(F("M WlanWriteWpa:: ssid=")); 
+		dbgp(ssid);
+		dbgp(F(", pass=")); 
+		dbgp(pass); 
+		dbgpl();
 	}
 #endif
 	// Version 3.3 use of config file
@@ -240,7 +242,7 @@ int WlanConnect(int maxTry) {
 	// We clear the WiFi memory and start with previous AP.
 	//
 	if (maxTry==0) {
-		Serial.println(F("WlanConnect:: Init para 0"));
+		dbgpl(F("WlanConnect:: Init para 0"));
 		WiFi.persistent(false);
 		WiFi.mode(WIFI_OFF);   // this is a temporary line, to be removed after SDK update to 1.5.4
 		if (gwayConfig.ssid.length() >0) {
@@ -265,18 +267,18 @@ int WlanConnect(int maxTry) {
 			char *password	= wpa[j].passw;
 #if DUSB>=1
 			if (debug>=0)  {
-				Serial.print(i);
-				Serial.print(':');
-				Serial.print(j); 
-				Serial.print(':');
-				Serial.print(sizeof(wpa)/sizeof(wpa[0]));
-				Serial.print(F(". WiFi connect SSID=")); 
-				Serial.print(ssid);
+				dbgp(i);
+				dbgp(':');
+				dbgp(j); 
+				dbgp(':');
+				dbgp(sizeof(wpa)/sizeof(wpa[0]));
+				dbgp(F(". WiFi connect SSID=")); 
+				dbgp(ssid);
 				if ( debug>=1 ) {
-					Serial.print(F(", pass="));
-					Serial.print(password);
+					dbgp(F(", pass="));
+					dbgp(password);
 				}
-				Serial.println();
+				dbgpl();
 			}
 #endif		
 			// Count the number of times we call WiFi.begin
@@ -307,12 +309,12 @@ int WlanConnect(int maxTry) {
 				delay(agains*500);
 #if DUSB>=1
 				if ( debug>=0 ) {
-					Serial.print(".");
+					dbgp(".");
 				}
 #endif
 			}
 #if DUSB>=1
-			Serial.println();
+			dbgpl();
 #endif		
 			//if ( WiFi.status() == WL_DISCONNECTED) return(0);				// XXX 180811 removed
 
@@ -333,11 +335,11 @@ int WlanConnect(int maxTry) {
 	if (WiFi.status() != WL_CONNECTED) {
 #if WIFIMANAGER==1
 #if DUSB>=1
-		Serial.println(F("Starting Access Point Mode"));
-		Serial.print(F("Connect Wifi to accesspoint: "));
-		Serial.print(AP_NAME);
-		Serial.print(F(" and connect to IP: 192.168.4.1"));
-		Serial.println();
+		dbgpl(F("Starting Access Point Mode"));
+		dbgp(F("Connect Wifi to accesspoint: "));
+		dbgp(AP_NAME);
+		dbgp(F(" and connect to IP: 192.168.4.1"));
+		dbgpl();
 #endif
 		wifiManager.autoConnect(AP_NAME, AP_PASSWD );
 		//wifiManager.startConfigPortal(AP_NAME, AP_PASSWD );
@@ -355,12 +357,12 @@ int WlanConnect(int maxTry) {
 #else
 #if DUSB>=1
 		if (debug>=0) {
-			Serial.println(F("WlanConnect:: Not connected after all"));
-			Serial.print(F("WLAN retry="));
-			Serial.print(i);
-			Serial.print(F(" , stat="));
-			Serial.print(WiFi.status() );						// Status. 3 is WL_CONNECTED
-			Serial.println();
+			dbgpl(F("WlanConnect:: Not connected after all"));
+			dbgp(F("WLAN retry="));
+			dbgp(i);
+			dbgp(F(" , stat="));
+			dbgp(WiFi.status() );						// Status. 3 is WL_CONNECTED
+			dbgpl();
 		}
 #endif// DUSB
 		return(-1);

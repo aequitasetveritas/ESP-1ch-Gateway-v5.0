@@ -77,13 +77,13 @@ static int LoRaSensors(uint8_t *buf) {
 
 #if DUSB>=1
 	if (debug>=0)
-		Serial.print(F("LoRaSensors:: "));
+		dbgp(F("LoRaSensors:: "));
 #endif
 
 #if _BATTERY==1
 #if DUSB>=1
 	if (debug>=0)
-		Serial.print(F("Battery "));
+		dbgp(F("Battery "));
 #endif
 #if defined(ARDUINO_ARCH_ESP8266) || defined(ESP32)
 	// For ESP there is no standard battery library
@@ -105,24 +105,24 @@ static int LoRaSensors(uint8_t *buf) {
 #if _GPS==1
 #if DUSB>=1
 	if (debug>=0)
-		Serial.print(F("M GPS "));
+		dbgp(F("M GPS "));
 
 	if (( debug>=1 ) && ( pdebug & P_MAIN )) {
-		Serial.print("\tLatitude  : ");
-		Serial.println(gps.location.lat(), 5);
-		Serial.print("\tLongitude : ");
-		Serial.println(gps.location.lng(), 4);
-		Serial.print("\tSatellites: ");
-		Serial.println(gps.satellites.value());
-		Serial.print("\tAltitude  : ");
-		Serial.print(gps.altitude.feet() / 3.2808);
-		Serial.println("M");
-		Serial.print("\tTime      : ");
-		Serial.print(gps.time.hour());
-		Serial.print(":");
-		Serial.print(gps.time.minute());
-		Serial.print(":");
-		Serial.println(gps.time.second());
+		dbgp("\tLatitude  : ");
+		dbgpl(gps.location.lat(), 5);
+		dbgp("\tLongitude : ");
+		dbgpl(gps.location.lng(), 4);
+		dbgp("\tSatellites: ");
+		dbgpl(gps.satellites.value());
+		dbgp("\tAltitude  : ");
+		dbgp(gps.altitude.feet() / 3.2808);
+		dbgpl("M");
+		dbgp("\tTime      : ");
+		dbgp(gps.time.hour());
+		dbgp(":");
+		dbgp(gps.time.minute());
+		dbgp(":");
+		dbgpl(gps.time.second());
 	}
 #endif
 
@@ -130,7 +130,7 @@ static int LoRaSensors(uint8_t *buf) {
 	
 	if (millis() > 5000 && gps.charsProcessed() < 10) {
 #if DUSB>=1
-		Serial.println(F("No GPS data received: check wiring"));
+		dbgpl(F("No GPS data received: check wiring"));
 #endif
 		return(0);
 	}
@@ -145,7 +145,7 @@ static int LoRaSensors(uint8_t *buf) {
 
 #if DUSB>=1
 	if (debug>=0)
-		Serial.println();
+		dbgpl();
 #endif
 
 	// If all sensor data is encoded, we encode the buffer	
@@ -366,12 +366,12 @@ static void checkMic(uint8_t *buf, uint8_t len, uint8_t *key) {
 	uint8_t NwkSKey[16] = _NWKSKEY;
 	
 	if (debug>=2) {
-		Serial.print(F("old="));
+		dbgp(F("old="));
 		for (uint8_t i=0; i<len; i++) { 
 			printHexDigit(buf[i]); 
-			Serial.print(' '); 
+			dbgp(' '); 
 		}
-		Serial.println();
+		dbgpl();
 	}	
 	for (uint8_t i=0; i<len-4; i++) cBuf[i] = buf[i];
 	len -=4;
@@ -380,12 +380,12 @@ static void checkMic(uint8_t *buf, uint8_t len, uint8_t *key) {
 	len += micPacket(cBuf, len, FrameCount, NwkSKey, 0);
 	
 	if (debug>=2) {
-		Serial.print(F("new="));
+		dbgp(F("new="));
 		for (uint8_t i=0; i<len; i++) { 
 			printHexDigit(cBuf[i]); 
-			Serial.print(' '); 
+			dbgp(' '); 
 		}
-		Serial.println();
+		dbgpl();
 	}
 	// Mic is only checked, but len is not corrected
 }
@@ -472,12 +472,12 @@ int sensorPacket() {
 
 #if DUSB>=1
 	if ((debug>=2) && (pdebug & P_RADIO )) {
-		Serial.print(F("old: "));
+		dbgp(F("old: "));
 		for (int i=0; i<PayLength; i++) {
-			Serial.print(LUP.payLoad[i],HEX);
-			Serial.print(' ');
+			dbgp(LUP.payLoad[i],HEX);
+			dbgp(' ');
 		}
-		Serial.println();
+		dbgpl();
 	}
 #endif	
 	
@@ -486,12 +486,12 @@ int sensorPacket() {
 
 #if DUSB>=1
 	if ((debug>=2) && (pdebug & P_RADIO )) {
-		Serial.print(F("new: "));
+		dbgp(F("new: "));
 		for (int i=0; i<CodeLength; i++) {
-			Serial.print(LUP.payLoad[i],HEX);
-			Serial.print(' ');
+			dbgp(LUP.payLoad[i],HEX);
+			dbgp(' ');
 		}
-		Serial.println();
+		dbgpl();
 	}
 #endif
 
@@ -507,12 +507,12 @@ int sensorPacket() {
 
 #if DUSB>=1
 	if ((debug>=2) && (pdebug & P_RADIO )) {
-		Serial.print(F("mic: "));
+		dbgp(F("mic: "));
 		for (int i=0; i<LUP.payLength; i++) {
-			Serial.print(LUP.payLoad[i],HEX);
-			Serial.print(' ');
+			dbgp(LUP.payLoad[i],HEX);
+			dbgp(' ');
 		}
-		Serial.println();
+		dbgpl();
 	}
 #endif
 
@@ -532,7 +532,7 @@ int sensorPacket() {
 	if (( frameCount % 10)==0) writeGwayCfg(CONFIGFILE);
 	
 	if (buff_index > 512) {
-		if (debug>0) Serial.println(F("sensorPacket:: ERROR buffer size too large"));
+		if (debug>0) dbgpl(F("sensorPacket:: ERROR buffer size too large"));
 		return(-1);
 	}
 
@@ -552,17 +552,17 @@ int sensorPacket() {
 	// the original message back again.
 	if ((debug>=2) && (pdebug & P_RADIO )) {
 		CodeLength = encodePacket((uint8_t *)(LUP.payLoad + 9), PayLength, (uint16_t)frameCount-1, DevAddr, AppSKey, 0);
-		Serial.print(F("rev: "));
+		dbgp(F("rev: "));
 		for (int i=0; i<CodeLength; i++) {
-			Serial.print(LUP.payLoad[i],HEX);
-			Serial.print(' ');
+			dbgp(LUP.payLoad[i],HEX);
+			dbgp(' ');
 		}
-		Serial.print(F(", addr="));
+		dbgp(F(", addr="));
 		for (int i=0; i<4; i++) {
-			Serial.print(DevAddr[i],HEX);
-			Serial.print(' ');
+			dbgp(DevAddr[i],HEX);
+			dbgp(' ');
 		}
-		Serial.println();
+		dbgpl();
 	}
 #endif
 
@@ -612,11 +612,11 @@ uint8_t encodePacket(uint8_t *Data, uint8_t DataLength, uint16_t FrameCount, uin
 
 #if DUSB>=1
 	if (( debug>=2 ) && ( pdebug & P_GUI )) {
-		Serial.print(F("G encodePacket:: DevAddr="));
-		for (int i=0; i<4; i++ ) { Serial.print(DevAddr[i],HEX); Serial.print(' '); }
-		Serial.print(F("G encodePacket:: AppSKey="));
-		for (int i=0; i<16; i++ ) { Serial.print(AppSKey[i],HEX); Serial.print(' '); }
-		Serial.println();
+		dbgp(F("G encodePacket:: DevAddr="));
+		for (int i=0; i<4; i++ ) { dbgp(DevAddr[i],HEX); dbgp(' '); }
+		dbgp(F("G encodePacket:: AppSKey="));
+		for (int i=0; i<16; i++ ) { dbgp(AppSKey[i],HEX); dbgp(' '); }
+		dbgpl();
 	}
 #endif
 
