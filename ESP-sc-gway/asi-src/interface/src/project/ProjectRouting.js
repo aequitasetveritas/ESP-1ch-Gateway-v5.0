@@ -6,6 +6,7 @@ import AuthenticatedRoute from '../authentication/AuthenticatedRoute';
 import DemoProject from './DemoProject';
 import LoraSection from './LoraSection';
 import GPRSSection from './gprs/GPRSSection';
+import PFSection from './packet_forwarder/PFSection';
 
 class ProjectRouting extends Component {
 
@@ -19,6 +20,7 @@ class ProjectRouting extends Component {
         }
         <AuthenticatedRoute exact path={`/${PROJECT_PATH}/demo/*`} component={DemoProject} />
         <AuthenticatedRoute exact path={`/${PROJECT_PATH}/lora/*`} component={LoraSection} />
+        <AuthenticatedRoute exact path={`/${PROJECT_PATH}/pf/*`} component={PFSection} />
         <AuthenticatedRoute exact path={`/${PROJECT_PATH}/gprs/*`} component={GPRSSection} />
         {
           /*

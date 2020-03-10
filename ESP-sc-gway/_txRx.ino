@@ -26,6 +26,8 @@
 
 #include "macro_helpers.h"
 
+bool gbl_fakeLoraWanFlag = false;
+
 void fakeLoraWanWrap(uint8_t *message, uint8_t *messageLen)
 {
 	uint8_t mhdr = 0x40; // Propietary Unconfirmed data up
@@ -346,7 +348,7 @@ int sendPacket(uint8_t *buf, uint8_t length)
 // returns:
 //	buff_index
 // ----------------------------------------------------------------------------
-int buildPacket(uint32_t tmst, uint8_t *buff_up, struct LoraUp LoraUp, bool internal)
+int buildPacket(uint32_t tmst, uint8_t *buff_up, struct LoraUp up_packet, bool internal)
 {
 	long SNR;
 	int rssicorr;
@@ -357,12 +359,12 @@ int buildPacket(uint32_t tmst, uint8_t *buff_up, struct LoraUp LoraUp, bool inte
 	int buff_index = 0;
 	char b64[256];
 
-	uint8_t *message = LoraUp.payLoad;
-	char messageLength = LoraUp.payLength;
+	uint8_t *message = up_packet.payLoad;
+	char messageLength = up_packet.payLength;
 
 	// Chequear si el paquete es custom agrotools
 	dbgpl("RX lora");
-	for (uint8_t i = 0; i < LoraUp.payLength; i++)
+	for (uint8_t i = 0; i < up_packet.payLength; i++)
 	{
 		if (message[i] < 0x10)
 		{
@@ -374,7 +376,7 @@ int buildPacket(uint32_t tmst, uint8_t *buff_up, struct LoraUp LoraUp, bool inte
 
 	dbgpl("");
 
-	dbgp("LoraUp Length ");
+	dbgp("up_packet Length ");
 	dbgpl((int)messageLength);
 	dbgp("Calculed Length ");
 	dbgpl(message[19] + 20); // 16 = payload + overhead
@@ -383,7 +385,15 @@ int buildPacket(uint32_t tmst, uint8_t *buff_up, struct LoraUp LoraUp, bool inte
 		// Custom agrotools - Agregar LoraWan wrap
 		dbgpl("Custom agrotools");
 		fakeLoraWanWrap(message, (uint8_t *)&messageLength);
+		gbl_fakeLoraWanFlag = true;
+		
+		// Actualizo el objeto global LoraUp
+		LoraUp.payLength = messageLength;
 		LoraUp.sf = 10;
+		if(messageLength <= 128){
+			memcpy(LoraUp.payLoad,message,messageLength);
+		}
+
 		dbgpl("RX fake LoraWan wrap");
 		for (uint8_t i = 0; i < messageLength; i++)
 		{
@@ -417,9 +427,9 @@ int buildPacket(uint32_t tmst, uint8_t *buff_up, struct LoraUp LoraUp, bool inte
 	}
 	else
 	{
-		SNR = LoraUp.snr;
-		prssi = LoraUp.prssi; // read register 0x1A, packet rssi
-		rssicorr = LoraUp.rssicorr;
+		SNR = up_packet.snr;
+		prssi = up_packet.prssi; // read register 0x1A, packet rssi
+		rssicorr = up_packet.rssicorr;
 	}
 
 #if STATISTICS >= 1
@@ -434,27 +444,27 @@ int buildPacket(uint32_t tmst, uint8_t *buff_up, struct LoraUp LoraUp, bool inte
 #if _LOCALSERVER == 1
 	statr[0].datal = 0;
 	int index;
-	if ((index = inDecodes((char *)(LoraUp.payLoad + 1))) >= 0)
+	if ((index = inDecodes((char *)(up_packet.payLoad + 1))) >= 0)
 	{
 
-		uint16_t frameCount = LoraUp.payLoad[7] * 256 + LoraUp.payLoad[6];
+		uint16_t frameCount = up_packet.payLoad[7] * 256 + up_packet.payLoad[6];
 
-		for (int k = 0; (k < LoraUp.payLength) && (k < 23); k++)
+		for (int k = 0; (k < up_packet.payLength) && (k < 23); k++)
 		{
-			statr[0].data[k] = LoraUp.payLoad[k + 9];
+			statr[0].data[k] = up_packet.payLoad[k + 9];
 		};
 
 		// XXX Check that k<23 when leaving the for loop
 		// XXX or we can not display in statr
 
 		uint8_t DevAddr[4];
-		DevAddr[0] = LoraUp.payLoad[4];
-		DevAddr[1] = LoraUp.payLoad[3];
-		DevAddr[2] = LoraUp.payLoad[2];
-		DevAddr[3] = LoraUp.payLoad[1];
+		DevAddr[0] = up_packet.payLoad[4];
+		DevAddr[1] = up_packet.payLoad[3];
+		DevAddr[2] = up_packet.payLoad[2];
+		DevAddr[3] = up_packet.payLoad[1];
 
 		statr[0].datal = encodePacket((uint8_t *)(statr[0].data),
-									  LoraUp.payLength - 9 - 4,
+									  up_packet.payLength - 9 - 4,
 									  (uint16_t)frameCount,
 									  DevAddr,
 									  decodes[index].appKey,
@@ -467,7 +477,7 @@ int buildPacket(uint32_t tmst, uint8_t *buff_up, struct LoraUp LoraUp, bool inte
 #if RSSI == 1
 	statr[0].rssi = _rssi - rssicorr;
 #endif // RSII
-	statr[0].sf = LoraUp.sf;
+	statr[0].sf = up_packet.sf;
 #if DUSB >= 2
 	if (debug >= 0)
 	{
@@ -716,7 +726,7 @@ int buildPacket(uint32_t tmst, uint8_t *buff_up, struct LoraUp LoraUp, bool inte
 	buff_index += 14;
 
 	/* Lora datarate & bandwidth, 16-19 useful chars */
-	switch (LoraUp.sf)
+	switch (up_packet.sf)
 	{
 	case SF6:
 		memcpy((void *)(buff_up + buff_index), (void *)",\"datr\":\"SF6", 12);
@@ -853,6 +863,10 @@ int receivePacket()
 		//#Punto de envio
 		S_PROTOCOL proto = settings_protocol();
 		dbgp("up SF ");dbgpl(LoraUp.sf);
+		if(gbl_fakeLoraWanFlag == true){
+		//	LoraUp.sf = 10; // Cambiar el SF artificialmente para subir el limite de bytes
+			gbl_fakeLoraWanFlag = false;
+		}
 		if (proto == MQTTBRIDGE_TCP)
 		{
 			mqtt_sendUplink(LoraUp);

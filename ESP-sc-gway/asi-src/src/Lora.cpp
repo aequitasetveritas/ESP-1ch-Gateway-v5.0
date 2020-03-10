@@ -1,3 +1,4 @@
+// Endpoint lora settings
 #include "Lora.h"
 
 extern void lora_settings_reconfig(int sf, int bw, uint32_t frec);

@@ -1,6 +1,7 @@
 #include "asi.h"
 #include "DemoProject.h"
 #include "Lora.h"
+#include "PacketForwarder.h"
 #include <ESP8266React.h>
 #include <FS.h>
 
@@ -10,6 +11,7 @@ AsyncWebServer server(80);
 ESP8266React esp8266React(&server, &SPIFFS);
 DemoProject demoProject = DemoProject(&server, &SPIFFS, esp8266React.getSecurityManager());
 LoraSettings loraSettings = LoraSettings(&server, &SPIFFS, esp8266React.getSecurityManager());
+PFSettings pfSettings = PFSettings(&server, &SPIFFS, esp8266React.getSecurityManager());
 
 void asi_begin() {
 #ifdef ESP32
@@ -24,6 +26,7 @@ void asi_begin() {
   // start the demo project
   demoProject.begin();
   loraSettings.begin();
+  pfSettings.begin();
 
   // start the server
   server.begin();

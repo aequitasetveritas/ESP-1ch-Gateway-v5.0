@@ -106,7 +106,7 @@ function LoraConfigForm(props) {
           <MenuItem value={12}>12</MenuItem>
         </SelectValidator>
 
-        <SelectValidator name="frecuencia" label="Frecuencia (Hz)" value={loraSettings.frecuencia} className={classes.selectField}
+        <SelectValidator name="frecuencia" label="Frecuencia Uplink (Hz)" value={loraSettings.frecuencia} className={classes.selectField}
           onChange={handleValueChange('frecuencia')}>
           <MenuItem value={903900000}>903900000</MenuItem>
           <MenuItem value={915200000}>915200000</MenuItem>

@@ -1,0 +1,11 @@
+{
+    "protocolo":1,
+    "stHost":"192.168.88.16",
+    "stPort":1700,
+    "statInterval":60,
+    "keepAlive":15,
+    "mqttHost":"mqtt.flespi.io",
+    "mqttPort":1883,
+    "mqttUser":"",
+    "mqttPass":""
+}

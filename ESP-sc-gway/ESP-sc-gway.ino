@@ -1076,35 +1076,13 @@ void sendstat()
 void setup()
 {
 
+	lcd_init();
+
 	char MAC_char[19]; // XXX Unbelievable
 	MAC_char[18] = 0;
 
 	Serial.begin(_BAUDRATE); // As fast as possible for bus
 	delay(100);
-
-#if _GPS == 1
-	// Pins are define in LoRaModem.h together with other pins
-	Serial1.begin(9600, SERIAL_8N1, GPS_TX, GPS_RX); // PIN 12-TX 15-RX
-#endif
-
-#ifdef ESP32
-#if DUSB >= 1
-	dbgp(F("ESP32 defined, freq="));
-#if _LFREQ == 433
-	dbgp(freqs[0]);
-	dbgp(F(" EU433"));
-#elif _LFREQ == 868
-	dbgp(freqs[0]);
-	dbgp(F(" EU868"));
-#endif
-	dbgpl();
-#endif
-#endif
-#ifdef ARDUINO_ARCH_ESP32
-#if DUSB >= 1
-	dbgpl(F("ARDUINO_ARCH_ESP32 defined"));
-#endif
-#endif
 
 #if DUSB >= 1
 	Serial.flush();
@@ -1119,31 +1097,12 @@ void setup()
 	{
 	}
 #endif
-#if _SPIFF_FORMAT >= 1
-#if DUSB >= 1
-	if ((debug >= 0) && (pdebug & P_MAIN))
-	{
-		dbgpl(F("M Format Filesystem ... "));
-	}
-#endif
-	SPIFFS.format(); // Normally disabled. Enable only when SPIFFS corrupt
-#if DUSB >= 1
-	if ((debug >= 0) && (pdebug & P_MAIN))
-	{
-		dbgpl(F("Done"));
-	}
-#endif
-#endif
 
 	dbgp(F("Assert="));
 #if defined CFG_noassert
 	dbgpl(F("No Asserts"));
 #else
 	dbgpl(F("Do Asserts"));
-#endif
-
-#if OLED >= 1
-	init_oLED();
 #endif
 
 	delay(500);
@@ -1157,12 +1116,6 @@ void setup()
 	}
 #endif
 
-	//WiFi.mode(WIFI_STA);
-	//WiFi.setAutoConnect(true);
-	//WiFi.begin();
-
-	//WlanReadWpa();								// Read the last Wifi settings from SPIFFS into memory
-
 	WiFi.macAddress(MAC_array);
 
 	sprintf(MAC_char, "%02x:%02x:%02x:%02x:%02x:%02x",
@@ -1175,38 +1128,10 @@ void setup()
 	// We start by connecting to a WiFi network, set hostname
 	char hostname[12];
 
-	// Setup WiFi UDP connection. Give it some time and retry x times..
-	//while (WlanConnect(0) <= 0) {
-	//	dbgp(F("Error Wifi network connect "));
-	//	dbgpl();
-	//	yield();
-	//}
-
-	// After there is a WiFi router connection, we can also set the hostname.
-	//#if ESP32_ARCH==1
-	//	sprintf(hostname, "%s%02x%02x%02x", "esp32-", MAC_array[3], MAC_array[4], MAC_array[5]);
-	//	WiFi.setHostname( hostname );
-	// #else
-	//	sprintf(hostname, "%s%02x%02x%02x", "esp8266-", MAC_array[3], MAC_array[4], MAC_array[5]);
-	//	wifi_station_set_hostname( hostname );
-	//#endif
-
-	//	dbgp(F("Host "));
-	//#if ESP32_ARCH==1
-	//	dbgp(WiFi.getHostname());
-	//#else
-	//	dbgp(wifi_station_get_hostname());
-	//#endif
-	//	dbgp(F(" WiFi Connected to "));
-	//	dbgp(WiFi.SSID());
-	//	dbgp(F(" on IP="));
-	//	dbgp(WiFi.localIP());
-	//	dbgpl();
-	//	delay(200);
-
 	asi_begin();
 	asi_loop();
 	asi_forceGetAllRadioSettings();
+	yield();
 
 	int8_t res = WiFi.waitForConnectResult();
 	if (res != WL_CONNECTED)
@@ -1230,12 +1155,7 @@ void setup()
 							   //pinMode(pins.dio2, INPUT);
 
 	// Init the SPI pins
-#if ESP32_ARCH == 1
-	SPI.begin(SCK, MISO, MOSI, SS);
-#else
 	SPI.begin();
-#endif
-
 	delay(500);
 
 	// We choose the Gateway ID to be the Ethernet Address of our Gateway card
@@ -1257,31 +1177,28 @@ void setup()
 	dbgp((double)freq / 1000000);
 	dbgpl(" Mhz.");
 
-	if (!WiFi.hostByName(NTP_TIMESERVER, ntpServer)) // Get IP address of Timeserver
+	if (WiFi.status() == WL_CONNECTED)
 	{
-		die("Setup:: ERROR hostByName NTP");
-	};
-	delay(100);
+		if (!WiFi.hostByName(NTP_TIMESERVER, ntpServer)) // Get IP address of Timeserver
+		{
+			die("Setup:: ERROR hostByName NTP");
+		};
+		delay(100);
 #ifdef _TTNSERVER
-	if (!WiFi.hostByName(_TTNSERVER, ttnServer)) // Use DNS to get server IP once
-	{
-		die("Setup:: ERROR hostByName TTN");
-	};
-	delay(100);
+		if (!WiFi.hostByName(_TTNSERVER, ttnServer)) // Use DNS to get server IP once
+		{
+			die("Setup:: ERROR hostByName TTN");
+		};
+		delay(100);
 #endif
 #ifdef _THINGSERVER
-	if (!WiFi.hostByName(_THINGSERVER, thingServer))
-	{
-		die("Setup:: ERROR hostByName THING");
+		if (!WiFi.hostByName(_THINGSERVER, thingServer))
+		{
+			die("Setup:: ERROR hostByName THING");
+		}
+		delay(100);
+#endif
 	}
-	delay(100);
-#endif
-
-	// The Over the AIr updates are supported when we have a WiFi connection.
-	// The NTP time setting does not have to be precise for this function to work.
-#if A_OTA == 1
-	setupOta(hostname); // Uses wwwServer
-#endif
 
 	// Set the NTP Time
 	// As long as the time has not been set we try to set the time.
@@ -1292,6 +1209,7 @@ void setup()
 	// of the time. This meyhod works more reliable than the
 	// interrupt driven method.
 
+//################################################### Time #######
 	//setTime((time_t)getNtpTime());
 	while (timeStatus() == timeNotSet)
 	{
@@ -1318,13 +1236,11 @@ void setup()
 #endif
 #endif //NTP_INTR
 
-#if A_SERVER == 1
-	// Setup the webserver
-	setupWWW();
-#endif
 
 	delay(100); // Wait after setup
 
+
+//########################### LORA ########################################
 	// Setup ad initialise LoRa state machine of _loramModem.ino
 	_state = S_INIT;
 	initLoraModem();
@@ -1359,18 +1275,14 @@ void setup()
 		attachInterrupt(pins.dio1, Interrupt_1, RISING); // Separate interrupts
 	}
 
-	writeConfig(CONFIGFILE, &gwayConfig); // Write config
+	// writeConfig(CONFIGFILE, &gwayConfig); // Write config
 
 	// activate OLED display
-#if OLED >= 1
-	acti_oLED();
-	addr_oLED();
-#endif
 
+
+//######################### MQTT ############################
 	mqtt_client.setServer(settings_mqtt_server(), 1883);
 	mqtt_client.setCallback(mqtt_callback);
-
-	lcd_init();
 
 	dbgpl(F("--------------------------------------"));
 } //setup
@@ -1495,8 +1407,7 @@ void loop()
 	else
 		yield();
 
-
-//################################################ DOWNSTREAM UDP ########################################
+	//################################################ DOWNSTREAM UDP ########################################
 	if ((protocolo == SEMTECH_PF_UDP) && (WiFi.status() == WL_CONNECTED))
 	{
 		while ((packetSize = Udp.parsePacket()) > 0)
@@ -2057,7 +1968,7 @@ void mqtt_reconnect()
 		String clientId = "ESP8266Client-";
 		clientId += String(random(0xffff), HEX);
 		// Attempt to connect
-		if (mqtt_client.connect(clientId.c_str(), "chirpstack_gw", ""))
+		if (mqtt_client.connect(clientId.c_str(), "eilc4aOObT0APAWyRukWxNSHG8ubJ6FOeQO6OsJPbzdOZXaEhlpFY7at5ssEoXgr", ""))
 		{
 			dbgpl("connected ");
 			// Once connected, publish an announcement...
@@ -2089,6 +2000,7 @@ void gprs_init()
 	// SerialMon.println("Initializing modem...");
 	lcd_line3("Restarting GPRS...");
 	modem.restart();
+	yield();
 	// modem.init();
 
 	String modemInfo = modem.getModemInfo();
