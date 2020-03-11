@@ -59,6 +59,8 @@
 
 // Interfaz de administracion
 #include "asi-src/src/asi.h"
+#include "asi-src/src/PacketForwarder.h"
+
 #include "utils.h"
 #include <pb_common.h>
 #include <pb_encode.h>
@@ -1209,7 +1211,8 @@ void setup()
 	// of the time. This meyhod works more reliable than the
 	// interrupt driven method.
 
-//################################################### Time #######
+//################################################### Time ###################
+
 	//setTime((time_t)getNtpTime());
 	while (timeStatus() == timeNotSet)
 	{
@@ -1240,7 +1243,8 @@ void setup()
 	delay(100); // Wait after setup
 
 
-//########################### LORA ########################################
+//#################################### LORA ########################################
+
 	// Setup ad initialise LoRa state machine of _loramModem.ino
 	_state = S_INIT;
 	initLoraModem();
@@ -1279,9 +1283,7 @@ void setup()
 
 	// activate OLED display
 
-
-//######################### MQTT ############################
-	mqtt_client.setServer(settings_mqtt_server(), 1883);
+	mqtt_client.setServer(settings_mqtt_server(), settings_mqtt_port());
 	mqtt_client.setCallback(mqtt_callback);
 
 	dbgpl(F("--------------------------------------"));
@@ -1591,6 +1593,7 @@ void loop()
 
 	if (protocolo == MQTTBRIDGE_TCP)
 	{
+		//######################### MQTT ############################
 		if (!mqtt_client.connected())
 		{
 			mqtt_reconnect();
@@ -1777,7 +1780,7 @@ bool pb_set_gateway_id(pb_ostream_t *stream, const pb_field_t *field, void *cons
 
 bool pb_set_ip(pb_ostream_t *stream, const pb_field_t *field, void *const *arg)
 {
-	char *str = "192.168.88.4";
+	char *str = "192.168.88.4"; // TODO
 
 	if (!pb_encode_tag_for_field(stream, field))
 		return false;
@@ -1968,7 +1971,7 @@ void mqtt_reconnect()
 		String clientId = "ESP8266Client-";
 		clientId += String(random(0xffff), HEX);
 		// Attempt to connect
-		if (mqtt_client.connect(clientId.c_str(), "eilc4aOObT0APAWyRukWxNSHG8ubJ6FOeQO6OsJPbzdOZXaEhlpFY7at5ssEoXgr", ""))
+		if (mqtt_client.connect(clientId.c_str(), settings_gprs_user(), settings_gprs_pass()))
 		{
 			dbgpl("connected ");
 			// Once connected, publish an announcement...
@@ -2054,4 +2057,12 @@ void gprs_init()
 bool gprs_connected()
 {
 	return modem.isGprsConnected();
+}
+
+void pf_settings_callback(PFListaSettings settings){
+		if(settings._protocolo == 2){
+			mqtt_client.disconnect(); // Desconectar para reconectar
+			mqtt_client.setServer(settings._mqttHost.c_str(), settings._mqttPort);
+			mqtt_client.setCallback(mqtt_callback);
+		}
 }

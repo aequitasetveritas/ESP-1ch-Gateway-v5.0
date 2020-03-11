@@ -48,3 +48,7 @@ bool cadGet(){
 void asi_forceGetAllRadioSettings(){
   loraSettings.onConfigUpdated();
 }
+
+PFListaSettings asi_pfSettings(){
+  return pfSettings.fetch();
+}

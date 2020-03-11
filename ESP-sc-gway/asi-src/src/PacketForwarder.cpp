@@ -1,12 +1,14 @@
 // Endpoint lora settings
 #include "PacketForwarder.h"
 
-extern void pf_settings_reconfig(int sf, int bw, uint32_t frec);
+extern void pf_settings_callback(PFListaSettings settings);
 
 PFSettings::PFSettings(AsyncWebServer* server, FS* fs, SecurityManager* securityManager) :
     AdminSettingsService(server, fs, securityManager, PF_SETTINGS_PATH, PF_SETTINGS_FILE) {
 }
+
 PFSettings::~PFSettings() {
+
 }
 
 void PFSettings::loop() {
@@ -14,7 +16,7 @@ void PFSettings::loop() {
 }
 
 void PFSettings::onConfigUpdated() {
-  //pf_settings_reconfig(_settings._sf, _settings._bw, _settings._frecuencia);
+  pf_settings_callback(_settings);
 }
 
 void PFSettings::readFromJsonObject(JsonObject& root) {
