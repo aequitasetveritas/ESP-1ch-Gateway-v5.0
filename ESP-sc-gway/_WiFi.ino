@@ -231,144 +231,144 @@ int WlanWriteWpa( char* ssid, char *pass) {
 // ----------------------------------------------------------------------------
 int WlanConnect(int maxTry) {
   
-#if WIFIMANAGER==1
-	WiFiManager wifiManager;
-#endif
+// #if WIFIMANAGER==1
+// 	WiFiManager wifiManager;
+// #endif
 
-	unsigned char agains = 0;
-	unsigned char wpa_index = (WIFIMANAGER >0 ? 0 : 1);		// Skip over first record for WiFiManager
+// 	unsigned char agains = 0;
+// 	unsigned char wpa_index = (WIFIMANAGER >0 ? 0 : 1);		// Skip over first record for WiFiManager
 
-	// The initial setup() call is done with parameter 0
-	// We clear the WiFi memory and start with previous AP.
-	//
-	if (maxTry==0) {
-		dbgpl(F("WlanConnect:: Init para 0"));
-		WiFi.persistent(false);
-		WiFi.mode(WIFI_OFF);   // this is a temporary line, to be removed after SDK update to 1.5.4
-		if (gwayConfig.ssid.length() >0) {
-			WiFi.begin(gwayConfig.ssid.c_str(), gwayConfig.pass.c_str());
-			delay(100);
-		}
-	}
+// 	// The initial setup() call is done with parameter 0
+// 	// We clear the WiFi memory and start with previous AP.
+// 	//
+// 	if (maxTry==0) {
+// 		dbgpl(F("WlanConnect:: Init para 0"));
+// 		WiFi.persistent(false);
+// 		WiFi.mode(WIFI_OFF);   // this is a temporary line, to be removed after SDK update to 1.5.4
+// 		if (gwayConfig.ssid.length() >0) {
+// 			WiFi.begin(gwayConfig.ssid.c_str(), gwayConfig.pass.c_str());
+// 			delay(100);
+// 		}
+// 	}
 	
-	// So try to connect to WLAN as long as we are not connected.
-	// The try parameters tells us how many times we try before giving up
-	// Value 0 is reserved for setup() first time connect
-	int i=0;
+// 	// So try to connect to WLAN as long as we are not connected.
+// 	// The try parameters tells us how many times we try before giving up
+// 	// Value 0 is reserved for setup() first time connect
+// 	int i=0;
 
-	while ( (WiFi.status() != WL_CONNECTED) && ( i<= maxTry ) )
-	{
+// 	while ( (WiFi.status() != WL_CONNECTED) && ( i<= maxTry ) )
+// 	{
 
-		// We try every SSID in wpa array until success
-		for (int j=wpa_index; (j< (sizeof(wpa)/sizeof(wpa[0]))) && (WiFi.status() != WL_CONNECTED ); j++)
-		{
-			// Start with well-known access points in the list
-			char *ssid		= wpa[j].login;
-			char *password	= wpa[j].passw;
-#if DUSB>=1
-			if (debug>=0)  {
-				dbgp(i);
-				dbgp(':');
-				dbgp(j); 
-				dbgp(':');
-				dbgp(sizeof(wpa)/sizeof(wpa[0]));
-				dbgp(F(". WiFi connect SSID=")); 
-				dbgp(ssid);
-				if ( debug>=1 ) {
-					dbgp(F(", pass="));
-					dbgp(password);
-				}
-				dbgpl();
-			}
-#endif		
-			// Count the number of times we call WiFi.begin
-			gwayConfig.wifis++;
+// 		// We try every SSID in wpa array until success
+// 		for (int j=wpa_index; (j< (sizeof(wpa)/sizeof(wpa[0]))) && (WiFi.status() != WL_CONNECTED ); j++)
+// 		{
+// 			// Start with well-known access points in the list
+// 			char *ssid		= wpa[j].login;
+// 			char *password	= wpa[j].passw;
+// #if DUSB>=1
+// 			if (debug>=0)  {
+// 				dbgp(i);
+// 				dbgp(':');
+// 				dbgp(j); 
+// 				dbgp(':');
+// 				dbgp(sizeof(wpa)/sizeof(wpa[0]));
+// 				dbgp(F(". WiFi connect SSID=")); 
+// 				dbgp(ssid);
+// 				if ( debug>=1 ) {
+// 					dbgp(F(", pass="));
+// 					dbgp(password);
+// 				}
+// 				dbgpl();
+// 			}
+// #endif		
+// 			// Count the number of times we call WiFi.begin
+// 			gwayConfig.wifis++;
 
 
 
-			WiFi.mode(WIFI_STA);
-			delay(1000);
-			WiFi.begin(ssid, password);
-			delay(8000);
+// 			WiFi.mode(WIFI_STA);
+// 			delay(1000);
+// 			WiFi.begin(ssid, password);
+// 			delay(8000);
 			
-			// Check the connection status again, return values
-			// 1 = CONNECTED
-			// 0 = DISCONNECTED (will reconnect)
-			// -1 = No SSID or other cause			
-			int stat = WlanStatus();
-			if ( stat == 1) {
-				writeGwayCfg(CONFIGFILE);					// XXX Write configuration to SPIFFS
-				return(1);
-			}
+// 			// Check the connection status again, return values
+// 			// 1 = CONNECTED
+// 			// 0 = DISCONNECTED (will reconnect)
+// 			// -1 = No SSID or other cause			
+// 			int stat = WlanStatus();
+// 			if ( stat == 1) {
+// 				writeGwayCfg(CONFIGFILE);					// XXX Write configuration to SPIFFS
+// 				return(1);
+// 			}
 		
-			// We increase the time for connect but try the same SSID
-			// We try for 10 times
-			agains=1;
-			while (((WiFi.status()) != WL_CONNECTED) && (agains < 10)) {
-				agains++;
-				delay(agains*500);
-#if DUSB>=1
-				if ( debug>=0 ) {
-					dbgp(".");
-				}
-#endif
-			}
-#if DUSB>=1
-			dbgpl();
-#endif		
-			//if ( WiFi.status() == WL_DISCONNECTED) return(0);				// XXX 180811 removed
+// 			// We increase the time for connect but try the same SSID
+// 			// We try for 10 times
+// 			agains=1;
+// 			while (((WiFi.status()) != WL_CONNECTED) && (agains < 10)) {
+// 				agains++;
+// 				delay(agains*500);
+// #if DUSB>=1
+// 				if ( debug>=0 ) {
+// 					dbgp(".");
+// 				}
+// #endif
+// 			}
+// #if DUSB>=1
+// 			dbgpl();
+// #endif		
+// 			//if ( WiFi.status() == WL_DISCONNECTED) return(0);				// XXX 180811 removed
 
 
-			// Make sure that we can connect to different AP's than 1
-			// this is a patch. Normally we connect to previous one.
-			WiFi.persistent(false);
-			WiFi.mode(WIFI_OFF);   // this is a temporary line, to be removed after SDK update to 1.5.4
+// 			// Make sure that we can connect to different AP's than 1
+// 			// this is a patch. Normally we connect to previous one.
+// 			WiFi.persistent(false);
+// 			WiFi.mode(WIFI_OFF);   // this is a temporary line, to be removed after SDK update to 1.5.4
 
-		} //for next WPA defined AP
+// 		} //for next WPA defined AP
 	  
-		i++;			// Number of times we try to connect
-	} //while
+// 		i++;			// Number of times we try to connect
+// 	} //while
 
 	
-	// If we are not connected to a well known AP
-	// we can invoike WIFIMANAGER or else return unsuccessful.
-	if (WiFi.status() != WL_CONNECTED) {
-#if WIFIMANAGER==1
-#if DUSB>=1
-		dbgpl(F("Starting Access Point Mode"));
-		dbgp(F("Connect Wifi to accesspoint: "));
-		dbgp(AP_NAME);
-		dbgp(F(" and connect to IP: 192.168.4.1"));
-		dbgpl();
-#endif
-		wifiManager.autoConnect(AP_NAME, AP_PASSWD );
-		//wifiManager.startConfigPortal(AP_NAME, AP_PASSWD );
-		// At this point, there IS a Wifi Access Point found and connected
-		// We must connect to the local SPIFFS storage to store the access point
-		//String s = WiFi.SSID();
-		//char ssidBuf[s.length()+1];
-		//s.toCharArray(ssidBuf,s.length()+1);
-		// Now look for the password
-		struct station_config sta_conf;
-		wifi_station_get_config(&sta_conf);
+// 	// If we are not connected to a well known AP
+// 	// we can invoike WIFIMANAGER or else return unsuccessful.
+// 	if (WiFi.status() != WL_CONNECTED) {
+// #if WIFIMANAGER==1
+// #if DUSB>=1
+// 		dbgpl(F("Starting Access Point Mode"));
+// 		dbgp(F("Connect Wifi to accesspoint: "));
+// 		dbgp(AP_NAME);
+// 		dbgp(F(" and connect to IP: 192.168.4.1"));
+// 		dbgpl();
+// #endif
+// 		wifiManager.autoConnect(AP_NAME, AP_PASSWD );
+// 		//wifiManager.startConfigPortal(AP_NAME, AP_PASSWD );
+// 		// At this point, there IS a Wifi Access Point found and connected
+// 		// We must connect to the local SPIFFS storage to store the access point
+// 		//String s = WiFi.SSID();
+// 		//char ssidBuf[s.length()+1];
+// 		//s.toCharArray(ssidBuf,s.length()+1);
+// 		// Now look for the password
+// 		struct station_config sta_conf;
+// 		wifi_station_get_config(&sta_conf);
 
-		//WlanWriteWpa(ssidBuf, (char *)sta_conf.password);
-		WlanWriteWpa((char *)sta_conf.ssid, (char *)sta_conf.password);
-#else
-#if DUSB>=1
-		if (debug>=0) {
-			dbgpl(F("WlanConnect:: Not connected after all"));
-			dbgp(F("WLAN retry="));
-			dbgp(i);
-			dbgp(F(" , stat="));
-			dbgp(WiFi.status() );						// Status. 3 is WL_CONNECTED
-			dbgpl();
-		}
-#endif// DUSB
-		return(-1);
-#endif
-	}
+// 		//WlanWriteWpa(ssidBuf, (char *)sta_conf.password);
+// 		WlanWriteWpa((char *)sta_conf.ssid, (char *)sta_conf.password);
+// #else
+// #if DUSB>=1
+// 		if (debug>=0) {
+// 			dbgpl(F("WlanConnect:: Not connected after all"));
+// 			dbgp(F("WLAN retry="));
+// 			dbgp(i);
+// 			dbgp(F(" , stat="));
+// 			dbgp(WiFi.status() );						// Status. 3 is WL_CONNECTED
+// 			dbgpl();
+// 		}
+// #endif// DUSB
+// 		return(-1);
+// #endif
+// 	}
 
-	yield();
+// 	yield();
 	return(1);
 }

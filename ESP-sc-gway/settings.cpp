@@ -2,11 +2,16 @@
 #include "asi-src/src/asi.h"
 #include "asi-src/src/PacketForwarder.h"
 
-// ############################## MQTT #########################################
+// ############################## MQTT #########################################ar
+
+static char host[100];
+static char user[100];
+static char pass[100];
 
 const char * settings_mqtt_server(){
 	PFListaSettings s = asi_pfSettings();
-	return s._mqttHost.c_str();
+	memcpy(host,s._mqttHost.c_str(),s._mqttHost.length());
+	return host;
 }
 
 uint16_t settings_mqtt_port(){
@@ -16,12 +21,14 @@ uint16_t settings_mqtt_port(){
 
 const char * settings_mqtt_user(){
 	PFListaSettings s = asi_pfSettings();
-	return s._mqttUser.c_str();
+	memcpy(user,s._mqttUser.c_str(),s._mqttUser.length());
+	return user;
 }
 
 const char * settings_mqtt_pass(){
 	PFListaSettings s = asi_pfSettings();
-	return s._mqttPass.c_str();
+	memcpy(pass,s._mqttPass.c_str(),s._mqttPass.length());
+	return pass;
 }
 
 

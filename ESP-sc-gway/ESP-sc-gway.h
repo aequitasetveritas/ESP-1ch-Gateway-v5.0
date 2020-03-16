@@ -261,12 +261,6 @@ struct wpas {
 	char passw[64];
 };
 
-// Please fill in at least ONE SSID and password from your own WiFI network
-// below. This is needed to get the gateway working
-// Note: DO NOT use the first and the last line of the stucture, these should be empty strings and
-//	the first line in te struct is reserved for WifiManager.
-//
-extern wpas wpa[];
 
 // For asserting and testing the following defines are used.
 //

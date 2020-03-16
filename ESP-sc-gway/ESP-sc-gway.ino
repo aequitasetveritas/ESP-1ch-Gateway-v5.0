@@ -151,11 +151,6 @@ ESP8266WebServer server(A_SERVERPORT);
 #endif
 using namespace std;
 
-wpas wpa[] = {
-	{"", ""}, // Reserved for WiFi Manager
-	{"que_miras_mi_wifi", "1008572055"},
-	{"ape", "beer"}};
-
 byte currentMode = 0x81;
 
 bool sx1272 = true; // Actually we use sx1276/RFM95
@@ -514,8 +509,8 @@ int readUdp(int packetSize)
 	uint8_t buff[32];				 // General buffer to use for UDP, set to 64
 	uint8_t buff_down[RX_BUFF_SIZE]; // Buffer for downstream
 
-	//	if ((WiFi.status() != WL_CONNECTED) &&& (WlanConnect(10) < 0)) {
-	if (WlanConnect(10) < 0)
+		if ((WiFi.status() != WL_CONNECTED)) 
+	//if (WlanConnect(10) < 0)
 	{
 #if DUSB >= 1
 		dbgp(F("readdUdp: ERROR connecting to WLAN"));
@@ -801,7 +796,7 @@ int sendUdp(IPAddress server, int port, uint8_t *msg, int length)
 {
 
 	// Check whether we are conected to Wifi and the internet
-	if (WlanConnect(3) < 0)
+	if(WiFi.status() != WL_CONNECTED) // (WlanConnect(3) < 0)
 	{
 #if DUSB >= 1
 		if ((debug >= 0) && (pdebug & P_MAIN))
@@ -1077,11 +1072,19 @@ void sendstat()
 // ----------------------------------------------------------------------------
 void setup()
 {
-
 	lcd_init();
 
-	char MAC_char[19]; // XXX Unbelievable
-	MAC_char[18] = 0;
+	// Pins are defined and set in loraModem.h
+	pinMode(pins.ss, OUTPUT);
+	digitalWrite(pins.ss, HIGH);
+	pinMode(pins.rst, OUTPUT);
+	pinMode(pins.dio0, INPUT); // This pin is interrupt
+	pinMode(pins.dio1, INPUT); // This pin is interrupt
+							   //pinMode(pins.dio2, INPUT);
+
+	// Init the SPI pins
+	SPI.begin();
+	delay(500);
 
 	Serial.begin(_BAUDRATE); // As fast as possible for bus
 	delay(100);
@@ -1118,6 +1121,9 @@ void setup()
 	}
 #endif
 
+	char MAC_char[19];
+	MAC_char[18] = 0;
+
 	WiFi.macAddress(MAC_array);
 
 	sprintf(MAC_char, "%02x:%02x:%02x:%02x:%02x:%02x",
@@ -1127,15 +1133,12 @@ void setup()
 	dbgp(F(", len="));
 	dbgpl(strlen(MAC_char));
 
-	// We start by connecting to a WiFi network, set hostname
-	char hostname[12];
-
 	asi_begin();
 	asi_loop();
 	asi_forceGetAllRadioSettings();
 	yield();
 
-	int8_t res = WiFi.waitForConnectResult();
+	/* int8_t res = WiFi.waitForConnectResult();
 	if (res != WL_CONNECTED)
 	{
 		dbgpl("No conectado");
@@ -1147,18 +1150,47 @@ void setup()
 		dbgpl(F("Error UDPconnect"));
 	}
 	delay(200);
+*/
 
-	// Pins are defined and set in loraModem.h
-	pinMode(pins.ss, OUTPUT);
-	digitalWrite(pins.ss, HIGH);
-	pinMode(pins.rst, OUTPUT);
-	pinMode(pins.dio0, INPUT); // This pin is interrupt
-	pinMode(pins.dio1, INPUT); // This pin is interrupt
-							   //pinMode(pins.dio2, INPUT);
+//################################################### Time ###################
+// Set the NTP Time
+// As long as the time has not been set we try to set the time.
+// #if NTP_INTR == 1
+// 	setupTime(); // Set NTP time host and interval
+// #else
+// 	// If not using the standard libraries, do a manual setting
+// 	// of the time. This meyhod works more reliable than the
+// 	// interrupt driven method.
 
-	// Init the SPI pins
-	SPI.begin();
-	delay(500);
+// 	//setTime((time_t)getNtpTime());
+// 	while (timeStatus() == timeNotSet)
+// 	{
+// #if DUSB >= 1
+// 		if ((debug >= 0) && (pdebug & P_MAIN))
+// 			dbgpl(F("M setupTime:: Time not set (yet)"));
+// #endif
+// 		delay(500);
+// 		time_t newTime;
+// 		newTime = (time_t)getNtpTime();
+// 		if (newTime != 0)
+// 			setTime(newTime);
+// 	}
+// 	// When we are here we succeeded in getting the time
+// 	startTime = now(); // Time in seconds
+// #if DUSB >= 1
+// 	dbgp("Time: ");
+// 	printTime();
+// 	dbgpl();
+// #endif
+// 	//writeGwayCfg(CONFIGFILE);
+// #if DUSB >= 1
+// 	//dbgpl(F("Gateway configuration saved"));
+// #endif
+// #endif //NTP_INTR
+
+	delay(100); // Wait after setup
+
+	// #################################### LORA ########################################
 
 	// We choose the Gateway ID to be the Ethernet Address of our Gateway card
 	// display results of getting hardware address
@@ -1178,73 +1210,6 @@ void setup()
 	dbgp(" on ");
 	dbgp((double)freq / 1000000);
 	dbgpl(" Mhz.");
-
-	if (WiFi.status() == WL_CONNECTED)
-	{
-		if (!WiFi.hostByName(NTP_TIMESERVER, ntpServer)) // Get IP address of Timeserver
-		{
-			die("Setup:: ERROR hostByName NTP");
-		};
-		delay(100);
-#ifdef _TTNSERVER
-		if (!WiFi.hostByName(_TTNSERVER, ttnServer)) // Use DNS to get server IP once
-		{
-			die("Setup:: ERROR hostByName TTN");
-		};
-		delay(100);
-#endif
-#ifdef _THINGSERVER
-		if (!WiFi.hostByName(_THINGSERVER, thingServer))
-		{
-			die("Setup:: ERROR hostByName THING");
-		}
-		delay(100);
-#endif
-	}
-
-	// Set the NTP Time
-	// As long as the time has not been set we try to set the time.
-#if NTP_INTR == 1
-	setupTime(); // Set NTP time host and interval
-#else
-	// If not using the standard libraries, do a manual setting
-	// of the time. This meyhod works more reliable than the
-	// interrupt driven method.
-
-//################################################### Time ###################
-
-	//setTime((time_t)getNtpTime());
-	while (timeStatus() == timeNotSet)
-	{
-#if DUSB >= 1
-		if ((debug >= 0) && (pdebug & P_MAIN))
-			dbgpl(F("M setupTime:: Time not set (yet)"));
-#endif
-		delay(500);
-		time_t newTime;
-		newTime = (time_t)getNtpTime();
-		if (newTime != 0)
-			setTime(newTime);
-	}
-	// When we are here we succeeded in getting the time
-	startTime = now(); // Time in seconds
-#if DUSB >= 1
-	dbgp("Time: ");
-	printTime();
-	dbgpl();
-#endif
-	writeGwayCfg(CONFIGFILE);
-#if DUSB >= 1
-	dbgpl(F("Gateway configuration saved"));
-#endif
-#endif //NTP_INTR
-
-
-	delay(100); // Wait after setup
-
-
-//#################################### LORA ########################################
-
 	// Setup ad initialise LoRa state machine of _loramModem.ino
 	_state = S_INIT;
 	initLoraModem();
@@ -1279,12 +1244,10 @@ void setup()
 		attachInterrupt(pins.dio1, Interrupt_1, RISING); // Separate interrupts
 	}
 
-	// writeConfig(CONFIGFILE, &gwayConfig); // Write config
-
-	// activate OLED display
-
+	// ###################### MQTT Init #################################
 	mqtt_client.setServer(settings_mqtt_server(), settings_mqtt_port());
 	mqtt_client.setCallback(mqtt_callback);
+	lcd_line3(settings_mqtt_server());
 
 	dbgpl(F("--------------------------------------"));
 } //setup
@@ -1314,8 +1277,33 @@ void loop()
 	uint32_t uSeconds; // micro seconds
 	int packetSize;
 	uint32_t nowSeconds = now();
+	static bool udpInit = false; // Flags para inicializar UDP y Time.
+	static bool timeInit = false;
+
 	S_PROTOCOL protocolo = settings_protocol();
 	S_BACKBONE backbone = settings_backbone();
+
+	// ######################## UDP Init ####################################################
+	if (!udpInit && (protocolo == SEMTECH_PF_UDP) && (backbone == BACKBONE_WIFI))
+	{
+		if (WiFi.status() == WL_CONNECTED)
+		{
+			if (!WiFi.hostByName(NTP_TIMESERVER, ntpServer)) // Get IP address of Timeserver
+			{
+				die("Setup:: ERROR hostByName NTP");
+			};
+			delay(100);
+#ifdef _TTNSERVER
+			if (!WiFi.hostByName(_TTNSERVER, ttnServer)) // Use DNS to get server IP once
+			{
+				die("Setup:: ERROR hostByName TTN");
+			};
+			delay(100);
+#endif
+			udpInit = true;
+		}
+	}
+
 
 	// Cambiar el cliente para mqtt
 	/* Todo la configuracion gprs pasa por aca */
@@ -1325,11 +1313,39 @@ void loop()
 		if (!gprs_connected())
 		{
 			gprs_init();
+		}else{
+			// Conectado -> Obtener el tiempo
+			if(!timeInit){
+				uint8_t res = modem.NTPServerSync();
+				if(res == 1){
+					String tiempo = modem.getGSMDateTime(DATE_FULL);
+					yield();
+					lcd_line3(tiempo.c_str());
+					timeInit = true;
+					// 13/09/11,20:23:25+32
+					uint8_t ano,mes,dia,hora,minu,segu;
+					//int res = sscanf(tiempo.c_str(),"%d/%d/%d,%d:%d:%d",&ano,&mes,&dia,&hora,&minu,&segu);
+					//if(res == 6){
+					//	setTime(hora,minu,segu,dia,mes,ano);
+
+					//}
+				}
+			}
+			
 		}
 	}
 	else if (backbone == BACKBONE_WIFI)
 	{
 		mqtt_client.setClient(espClient);
+		if((!timeInit) && (WiFi.status() == WL_CONNECTED)){
+			// Init time
+			time_t newTime;
+			newTime = (time_t)getNtpTime();
+			if (newTime != 0) {
+				setTime(newTime);
+				timeInit = true;
+			}
+		}
 	}
 
 	asi_loop(); //Interface Loop
@@ -1341,7 +1357,7 @@ void loop()
 	if (protocolo == MQTTBRIDGE_TCP)
 	{
 		//mqtt_client.loop();
-		if (mqtt_down_flag == 1)
+		if (mqtt_down_flag == 1) // Hay un Downlink packet
 		{
 			dbgp("mqtt_down ");
 			dbgpl(_state);
@@ -1489,6 +1505,9 @@ void loop()
 
 	yield(); // XXX 26/12/2017
 
+
+// ##################################################### Stat ############################################
+
 	// stat PUSH_DATA message (*2, par. 4)
 	//
 
@@ -1582,11 +1601,12 @@ void loop()
 	nowSeconds = now();
 	if (nowSeconds - ntptimer >= _NTP_INTERVAL)
 	{
-		yield();
+		timeInit = false; // Setear el flag para forzar resync en el siguiente loop
+		/*yield();
 		time_t newTime;
 		newTime = (time_t)getNtpTime();
 		if (newTime != 0)
-			setTime(newTime);
+			setTime(newTime);*/
 		ntptimer = nowSeconds;
 	}
 #endif
@@ -1594,6 +1614,7 @@ void loop()
 	if (protocolo == MQTTBRIDGE_TCP)
 	{
 		//######################### MQTT ############################
+		// Reconectar si estoy fuera.
 		if (!mqtt_client.connected())
 		{
 			mqtt_reconnect();
@@ -2059,10 +2080,12 @@ bool gprs_connected()
 	return modem.isGprsConnected();
 }
 
-void pf_settings_callback(PFListaSettings settings){
-		if(settings._protocolo == 2){
-			mqtt_client.disconnect(); // Desconectar para reconectar
-			mqtt_client.setServer(settings._mqttHost.c_str(), settings._mqttPort);
-			mqtt_client.setCallback(mqtt_callback);
-		}
+void pf_settings_callback(PFListaSettings settings)
+{
+	if (settings._protocolo == 2)
+	{
+		mqtt_client.disconnect(); // Desconectar para reconectar
+		mqtt_client.setServer(settings._mqttHost.c_str(), settings._mqttPort);
+		mqtt_client.setCallback(mqtt_callback);
+	}
 }
