@@ -58,19 +58,19 @@ void NTPSettingsService::onStationModeDisconnected(WiFiEvent_t event, WiFiEventI
 }
 #elif defined(ESP8266)
 void NTPSettingsService::onStationModeGotIP(const WiFiEventStationModeGotIP& event) {
-  Serial.println("Got IP address, starting NTP Synchronization");
+  //Serial.println("Got IP address, starting NTP Synchronization");
   _reconfigureNTP = true;
 }
 
 void NTPSettingsService::onStationModeDisconnected(const WiFiEventStationModeDisconnected& event) {
-  Serial.println("WiFi connection dropped, stopping NTP.");
+  //Serial.println("WiFi connection dropped, stopping NTP.");
   _reconfigureNTP = false;
   sntp_stop();
 }
 #endif
 
 void NTPSettingsService::configureNTP() {
-  Serial.println("Configuring NTP...");
+  //Serial.println("Configuring NTP...");
   if (_settings.enabled) {
 #ifdef ESP32
     configTzTime(_settings.tzFormat.c_str(), _settings.server.c_str());

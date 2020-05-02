@@ -130,7 +130,7 @@ extern "C"
 #endif //ESP_ARCH
 
 // ----------- Declaration of vars --------------
-uint8_t debug = 1;	 // Debug level! 0 is no msgs, 1 normal, 2 extensive
+uint8_t debug = 1;	   // Debug level! 0 is no msgs, 1 normal, 2 extensive
 uint8_t pdebug = 0xFF; // Allow all atterns (departments)
 
 #if GATEWAYNODE == 1
@@ -155,11 +155,14 @@ byte currentMode = 0x81;
 
 bool sx1272 = true; // Actually we use sx1276/RFM95
 
-uint32_t cp_nb_rx_rcv;   // Number of messages received by gateway
-uint32_t cp_nb_rx_ok;	// Number of messages received OK
-uint32_t cp_nb_rx_bad;   // Number of messages received bad
+uint32_t cp_nb_rx_rcv;	 // Number of messages received by gateway
+uint32_t cp_nb_rx_ok;	 // Number of messages received OK
+uint32_t cp_nb_rx_bad;	 // Number of messages received bad
 uint32_t cp_nb_rx_nocrc; // Number of messages without CRC
-uint32_t cp_up_pkt_fwd;
+uint32_t cp_up_pkt_fwd;  // Number of packets forwarded
+uint32_t cp_up_pkt_up_fail; // Number of packets received but not forwarded
+uint32_t cp_dwnb; // Downlink recibidos
+uint32_t cp_txnb; // Paquetes TX
 
 uint8_t MAC_array[6];
 
@@ -191,14 +194,14 @@ IPAddress thingServer;
 
 WiFiUDP Udp;
 
-time_t startTime = 0;   // The time in seconds since 1970 that the server started
+time_t startTime = 0;	// The time in seconds since 1970 that the server started
 						// be aware that UTP time has to succeed for meaningful values.
 						// We use this variable since millis() is reset every 50 days...
 uint32_t eventTime = 0; // Timing of _event to change value (or not).
-uint32_t sendTime = 0;  // Time that the last message transmitted
-uint32_t doneTime = 0;  // Time to expire when CDDONE takes too long
-uint32_t statTime = 0;  // last time we sent a stat message to server
-uint32_t pulltime = 0;  // last time we sent a pull_data request to server
+uint32_t sendTime = 0;	// Time that the last message transmitted
+uint32_t doneTime = 0;	// Time to expire when CDDONE takes too long
+uint32_t statTime = 0;	// last time we sent a stat message to server
+uint32_t pulltime = 0;	// last time we sent a pull_data request to server
 //uint32_t lastTmst = 0;							// Last activity Timer
 
 #if A_SERVER == 1
@@ -210,7 +213,7 @@ uint32_t ntptimer = 0;
 
 #define TX_BUFF_SIZE 1024 // Upstream buffer to send to MQTT
 #define RX_BUFF_SIZE 1024 // Downstream received from MQTT
-#define STATUS_SIZE 512   // Should(!) be enough based on the static text .. was 1024
+#define STATUS_SIZE 512	  // Should(!) be enough based on the static text .. was 1024
 
 #if GATEWAYNODE == 1
 uint16_t frameCount = 0; // We write this to SPIFF file
@@ -509,7 +512,7 @@ int readUdp(int packetSize)
 	uint8_t buff[32];				 // General buffer to use for UDP, set to 64
 	uint8_t buff_down[RX_BUFF_SIZE]; // Buffer for downstream
 
-		if ((WiFi.status() != WL_CONNECTED)) 
+	if ((WiFi.status() != WL_CONNECTED))
 	//if (WlanConnect(10) < 0)
 	{
 #if DUSB >= 1
@@ -796,7 +799,7 @@ int sendUdp(IPAddress server, int port, uint8_t *msg, int length)
 {
 
 	// Check whether we are conected to Wifi and the internet
-	if(WiFi.status() != WL_CONNECTED) // (WlanConnect(3) < 0)
+	if (WiFi.status() != WL_CONNECTED) // (WlanConnect(3) < 0)
 	{
 #if DUSB >= 1
 		if ((debug >= 0) && (pdebug & P_MAIN))
@@ -1152,41 +1155,41 @@ void setup()
 	delay(200);
 */
 
-//################################################### Time ###################
-// Set the NTP Time
-// As long as the time has not been set we try to set the time.
-// #if NTP_INTR == 1
-// 	setupTime(); // Set NTP time host and interval
-// #else
-// 	// If not using the standard libraries, do a manual setting
-// 	// of the time. This meyhod works more reliable than the
-// 	// interrupt driven method.
+	//################################################### Time ###################
+	// Set the NTP Time
+	// As long as the time has not been set we try to set the time.
+	// #if NTP_INTR == 1
+	// 	setupTime(); // Set NTP time host and interval
+	// #else
+	// 	// If not using the standard libraries, do a manual setting
+	// 	// of the time. This meyhod works more reliable than the
+	// 	// interrupt driven method.
 
-// 	//setTime((time_t)getNtpTime());
-// 	while (timeStatus() == timeNotSet)
-// 	{
-// #if DUSB >= 1
-// 		if ((debug >= 0) && (pdebug & P_MAIN))
-// 			dbgpl(F("M setupTime:: Time not set (yet)"));
-// #endif
-// 		delay(500);
-// 		time_t newTime;
-// 		newTime = (time_t)getNtpTime();
-// 		if (newTime != 0)
-// 			setTime(newTime);
-// 	}
-// 	// When we are here we succeeded in getting the time
-// 	startTime = now(); // Time in seconds
-// #if DUSB >= 1
-// 	dbgp("Time: ");
-// 	printTime();
-// 	dbgpl();
-// #endif
-// 	//writeGwayCfg(CONFIGFILE);
-// #if DUSB >= 1
-// 	//dbgpl(F("Gateway configuration saved"));
-// #endif
-// #endif //NTP_INTR
+	// 	//setTime((time_t)getNtpTime());
+	// 	while (timeStatus() == timeNotSet)
+	// 	{
+	// #if DUSB >= 1
+	// 		if ((debug >= 0) && (pdebug & P_MAIN))
+	// 			dbgpl(F("M setupTime:: Time not set (yet)"));
+	// #endif
+	// 		delay(500);
+	// 		time_t newTime;
+	// 		newTime = (time_t)getNtpTime();
+	// 		if (newTime != 0)
+	// 			setTime(newTime);
+	// 	}
+	// 	// When we are here we succeeded in getting the time
+	// 	startTime = now(); // Time in seconds
+	// #if DUSB >= 1
+	// 	dbgp("Time: ");
+	// 	printTime();
+	// 	dbgpl();
+	// #endif
+	// 	//writeGwayCfg(CONFIGFILE);
+	// #if DUSB >= 1
+	// 	//dbgpl(F("Gateway configuration saved"));
+	// #endif
+	// #endif //NTP_INTR
 
 	delay(100); // Wait after setup
 
@@ -1245,9 +1248,18 @@ void setup()
 	}
 
 	// ###################### MQTT Init #################################
-	mqtt_client.setServer(settings_mqtt_server(), settings_mqtt_port());
-	mqtt_client.setCallback(mqtt_callback);
-	lcd_line3(settings_mqtt_server());
+	if (settings_protocol() == MODO_AGROTOOLS)
+	{
+		mqtt_client.setServer(settings_tb_mqtt_server(), settings_tb_mqtt_port());
+		mqtt_client.setCallback(mqtt_callback);
+	}
+	else
+	{
+		mqtt_client.setServer(settings_mqtt_server(), settings_mqtt_port());
+		mqtt_client.setCallback(mqtt_callback);
+	}
+
+	//lcd_line3(settings_mqtt_server());
 
 	dbgpl(F("--------------------------------------"));
 } //setup
@@ -1281,7 +1293,7 @@ void loop()
 	static bool timeInit = false;
 
 	S_PROTOCOL protocolo = settings_protocol();
-	S_BACKBONE backbone = settings_backbone();
+	S_BACKBONE backbone = asi_loraSettings()._backbone == 2 ? BACKBONE_GPRS : BACKBONE_WIFI; //settings_backbone();
 
 	// ######################## UDP Init ####################################################
 	if (!udpInit && (protocolo == SEMTECH_PF_UDP) && (backbone == BACKBONE_WIFI))
@@ -1304,44 +1316,54 @@ void loop()
 		}
 	}
 
-
 	// Cambiar el cliente para mqtt
 	/* Todo la configuracion gprs pasa por aca */
+	static uint32_t gprs_cwt = 0; // GPRS Watchdog Timer
+
 	if (backbone == BACKBONE_GPRS)
 	{
 		mqtt_client.setClient(gprsClient);
-		if (!gprs_connected())
+		
+		if (((millis()- gprs_cwt) > 20000)) // Chequear cada 20 segs
 		{
-			gprs_init();
-		}else{
+			gprs_cwt = millis();
+			if(!gprs_connected()){
+				gprs_init();
+			}
+		}
+		else
+		{
 			// Conectado -> Obtener el tiempo
-			if(!timeInit){
+			/*if (!timeInit)
+			{
 				uint8_t res = modem.NTPServerSync();
-				if(res == 1){
+				if (res == 1)
+				{
 					String tiempo = modem.getGSMDateTime(DATE_FULL);
 					yield();
-					lcd_line3(tiempo.c_str());
+					// lcd_line3(tiempo.c_str());
 					timeInit = true;
 					// 13/09/11,20:23:25+32
-					uint8_t ano,mes,dia,hora,minu,segu;
-					//int res = sscanf(tiempo.c_str(),"%d/%d/%d,%d:%d:%d",&ano,&mes,&dia,&hora,&minu,&segu);
+					uint8_t ano, mes, dia, hora, minu, segu;
+					//int res = sscanf(ti empo.c_str(),"%d/%d/%d,%d:%d:%d",&ano,&mes,&dia,&hora,&minu,&segu);
 					//if(res == 6){
 					//	setTime(hora,minu,segu,dia,mes,ano);
 
 					//}
 				}
-			}
-			
+			}*/
 		}
 	}
 	else if (backbone == BACKBONE_WIFI)
 	{
 		mqtt_client.setClient(espClient);
-		if((!timeInit) && (WiFi.status() == WL_CONNECTED)){
+		if ((!timeInit) && (WiFi.status() == WL_CONNECTED))
+		{
 			// Init time
 			time_t newTime;
 			newTime = (time_t)getNtpTime();
-			if (newTime != 0) {
+			if (newTime != 0)
+			{
 				setTime(newTime);
 				timeInit = true;
 			}
@@ -1388,6 +1410,9 @@ void loop()
 		}
 #endif
 
+		// Radio HEALTH
+		
+
 		// startReceiver() ??
 		if ((cadGet()) || (_hop))
 		{
@@ -1404,14 +1429,6 @@ void loop()
 		writeRegister(REG_IRQ_FLAGS, (uint8_t)0xFF); // Reset all interrupt flags
 		msgTime = nowSeconds;
 	}
-
-#if A_SERVER == 1
-	// Handle the Web server part of this sketch. Mainly used for administration
-	// and monitoring of the node. This function is important so it is called at the
-	// start of the loop() function.
-	yield();
-	server.handleClient();
-#endif
 
 	// If event is set, we know that we have a (soft) interrupt.
 	// After all necessary web/OTA services are scanned, we will
@@ -1505,14 +1522,19 @@ void loop()
 
 	yield(); // XXX 26/12/2017
 
-
-// ##################################################### Stat ############################################
+	// ##################################################### Stat ############################################
 
 	// stat PUSH_DATA message (*2, par. 4)
 	//
 
-	if ((nowSeconds - statTime) >= _STAT_INTERVAL)
+	if ((nowSeconds - statTime) >= settings_stats_interval())
 	{ // Wake up every xx seconds
+
+		if (protocolo == MODO_AGROTOOLS)
+		{
+			mqtt_sendStat();
+			/* ¿Algo? */
+		}
 #if DUSB >= 1
 		if ((debug >= 1) && (pdebug & P_MAIN))
 		{
@@ -1538,28 +1560,6 @@ void loop()
 		}
 #endif
 
-		// If the gateway behaves like a node, we do from time to time
-		// send a node message to the backend server.
-		// The Gateway nod emessage has nothing to do with the STAT_INTERVAL
-		// message but we schedule it in the same frequency.
-		//
-#if GATEWAYNODE == 1
-		if (gwayConfig.isNode)
-		{
-			// Give way to internal some Admin if necessary
-			yield();
-
-			// If the 1ch gateway is a sensor itself, send the sensor values
-			// could be battery but also other status info or sensor info
-
-			if (sensorPacket() < 0)
-			{
-#if DUSB >= 1
-				dbgpl(F("sensorPacket: Error"));
-#endif
-			}
-		}
-#endif
 		statTime = nowSeconds;
 	}
 
@@ -1611,18 +1611,23 @@ void loop()
 	}
 #endif
 
-	if (protocolo == MQTTBRIDGE_TCP)
+	if (protocolo == MQTTBRIDGE_TCP || protocolo == MODO_AGROTOOLS)
 	{
 		//######################### MQTT ############################
 		// Reconectar si estoy fuera.
-		if (!mqtt_client.connected())
-		{
-			mqtt_reconnect();
+		static uint32_t mqtt_loopwt = 0; // MQTT Loop Watchdog Timer
+		
+		if(((millis() - mqtt_loopwt) > 50)){
+			mqtt_loopwt = millis();
+			if(!(mqtt_client.loop())){
+				// No hay conexion
+				mqtt_reconnect();
+			}
 		}
-		mqtt_client.loop();
+		
 	}
 
-	lcd_update(cp_nb_rx_rcv, cp_nb_rx_ok, freq, global_sf);
+	// lcd_update(cp_nb_rx_rcv, cp_nb_rx_ok, freq, global_sf);
 } //loop
 
 void lora_settings_reconfig(int sf, int bw, uint32_t frec)
@@ -1711,6 +1716,10 @@ bool pb_downlink_id_decode(pb_istream_t *stream, const pb_field_t *field, void *
 void mqtt_callback(char *topic, byte *payload, unsigned int length)
 {
 
+	if(settings_protocol() == MODO_AGROTOOLS){
+		return;
+	}
+
 	dbgp("Message arrived [");
 	dbgp(topic);
 	dbgp("] Length ");
@@ -1771,6 +1780,8 @@ void mqtt_callback(char *topic, byte *payload, unsigned int length)
 	dbgpl(LoraDown.payLength);
 
 	mqtt_send_ack(downlink_id);
+	cp_dwnb++;
+
 	/*gw_GatewayStats statsMsg = gw_GatewayStats_init_zero;
 	uint8_t pbbuffer[128];
 	char realIp[20];
@@ -1872,6 +1883,12 @@ bool pb_set_downlink_id(pb_ostream_t *stream, const pb_field_t *field, void *con
 
 void mqtt_sendStat()
 {
+	if(settings_protocol() == MODO_AGROTOOLS){
+
+		
+		return;
+	}
+
 	gw_GatewayStats statsMsg = gw_GatewayStats_init_zero;
 
 	statsMsg.gateway_id.funcs.encode = pb_set_gateway_id;
@@ -1886,10 +1903,10 @@ void mqtt_sendStat()
 	statsMsg.location.longitude = -59.0927072;
 
 	statsMsg.config_version.funcs.encode = pb_set_config_version;
-	statsMsg.rx_packets_received = 30;	 //cp_nb_rx_rcv;
-	statsMsg.rx_packets_received_ok = 100; //cp_nb_rx_ok;
-	statsMsg.tx_packets_received = cp_up_pkt_fwd;
-	statsMsg.tx_packets_emitted = cp_up_pkt_fwd;
+	statsMsg.rx_packets_received = cp_nb_rx_rcv;
+	statsMsg.rx_packets_received_ok = cp_nb_rx_ok;
+	statsMsg.tx_packets_received = cp_dwnb;
+	statsMsg.tx_packets_emitted = cp_txnb;
 
 	uint8_t buffer[120];
 	pb_ostream_t stream = pb_ostream_from_buffer(buffer, sizeof(buffer));
@@ -1949,6 +1966,7 @@ void mqtt_sendUplink(struct LoraUp up_packet)
 	}
 	dbgpl("Publishings");
 	mqtt_client.publish("gateway/4c11aeffff045b23/event/up", buffer, stream.bytes_written);
+	cp_up_pkt_fwd++;
 }
 
 void mqtt_send_ack(uint8_t *downId)
@@ -1992,22 +2010,39 @@ void mqtt_reconnect()
 		String clientId = "ESP8266Client-";
 		clientId += String(random(0xffff), HEX);
 		// Attempt to connect
-		if (mqtt_client.connect(clientId.c_str(), settings_gprs_user(), settings_gprs_pass()))
+		if (settings_protocol() == MODO_AGROTOOLS)
 		{
-			dbgpl("connected ");
-			// Once connected, publish an announcement...
-			// mqtt_client.publish("outTopic", "hello world");
-			// ... and resubscribe
-			dbgp(mqtt_client.subscribe("gateway/4c11aeffff045b23/command/down"));
-			//mqtt_client.subscribe("gateway/4c11aeffff045b23/command/+");
+			if (mqtt_client.connect(clientId.c_str(), settings_tb_mqtt_user(), ""))
+			{
+				mqtt_client.subscribe("v1/devices/me/rpc/request/+");
+			}
+			else
+			{
+				dbgp("failed, rc=");
+				dbgp(mqtt_client.state());
+				dbgpl(" try again in 5 seconds");
+			}
 		}
 		else
 		{
-			dbgp("failed, rc=");
-			dbgp(mqtt_client.state());
-			dbgpl(" try again in 5 seconds");
-			// Wait 5 seconds before retrying
-			// delay(5000);
+			// Settings Chirpstack
+			if (mqtt_client.connect(clientId.c_str(), settings_mqtt_user(), settings_mqtt_pass()))
+			{
+				dbgpl("connected ");
+				// Once connected, publish an announcement...
+				// mqtt_client.publish("outTopic", "hello world");
+				// ... and resubscribe
+				dbgp(mqtt_client.subscribe("gateway/4c11aeffff045b23/command/down"));
+				//mqtt_client.subscribe("gateway/4c11aeffff045b23/command/+");
+			}
+			else
+			{
+				dbgp("failed, rc=");
+				dbgp(mqtt_client.state());
+				dbgpl(" try again in 5 seconds");
+				// Wait 5 seconds before retrying
+				// delay(5000);
+			}
 		}
 	}
 }
@@ -2022,13 +2057,13 @@ void gprs_init()
 	// Restart takes quite some time
 	// To skip it, call init() instead of restart()
 	// SerialMon.println("Initializing modem...");
-	lcd_line3("Restarting GPRS...");
+	//lcd_line3("Restarting GPRS...");
 	modem.restart();
 	yield();
 	// modem.init();
 
 	String modemInfo = modem.getModemInfo();
-	lcd_line3(modemInfo.c_str());
+	//lcd_line3(modemInfo.c_str());
 
 	//SerialMon.print("Modem Info: ");
 	//SerialMon.println(modemInfo);
@@ -2053,7 +2088,7 @@ void gprs_init()
 	if (modem.isNetworkConnected())
 	{
 		// SerialMon.println("Network connected");
-		lcd_line3("GPRS Nwrk CONN");
+		// lcd_line3("GPRS Nwrk CONN");
 	}
 
 	// GPRS connection parameters are usually set after network registration
@@ -2063,7 +2098,7 @@ void gprs_init()
 	{
 		//SerialMon.println(" fail");
 		// delay(10000);
-		lcd_line3("GPRS CONN Fail");
+		// lcd_line3("GPRS CONN Fail");
 		return;
 	}
 	//SerialMon.println(" success");
@@ -2071,7 +2106,7 @@ void gprs_init()
 	if (modem.isGprsConnected())
 	{
 		// SerialMon.println("GPRS connected");
-		lcd_line3("GPRS CONN Ok");
+		// lcd_line3("GPRS CONN Ok");
 	}
 }
 
@@ -2082,10 +2117,42 @@ bool gprs_connected()
 
 void pf_settings_callback(PFListaSettings settings)
 {
+	/* Callback para cambios en settings */
 	if (settings._protocolo == 2)
 	{
 		mqtt_client.disconnect(); // Desconectar para reconectar
 		mqtt_client.setServer(settings._mqttHost.c_str(), settings._mqttPort);
 		mqtt_client.setCallback(mqtt_callback);
+	}
+	else if (settings._protocolo == 3)
+	{
+		mqtt_client.disconnect(); // Desconectar para reconectar
+		mqtt_client.setServer(settings._mqttHost.c_str(), settings._mqttPort);
+		mqtt_client.setCallback(mqtt_callback);
+	}
+}
+
+void mqtt_sendTBPacket(struct LoraUp  up_packet)
+{
+	char mqtt_msg[200];
+	strncpy(mqtt_msg, "{\"rxpl\":\"", 150);
+	memcpy(mqtt_msg + 9, LoraUp.payLoad, LoraUp.payLength);
+	strncpy(mqtt_msg + 9 + LoraUp.payLength, "\"}",141);
+
+	if(mqtt_client.publish("v1/devices/me/telemetry", mqtt_msg, strlen(mqtt_msg))){
+		cp_up_pkt_fwd++;
+		
+	}else{
+		// retry 1
+		Serial.println("FALLO PUBLISH!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+		Serial.println(LoraUp.payLength);
+		Serial.write(LoraUp.payLoad,128);
+		Serial.println();
+		if(mqtt_client.publish("v1/devices/me/telemetry", mqtt_msg, strlen(mqtt_msg))){
+			cp_up_pkt_fwd++;
+		}else{
+			cp_up_pkt_up_fail++;
+		}
+
 	}
 }

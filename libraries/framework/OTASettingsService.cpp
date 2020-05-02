@@ -45,7 +45,7 @@ void OTASettingsService::configureArduinoOTA() {
     _arduinoOTA = nullptr;
   }
   if (_settings.enabled) {
-    Serial.println("Starting OTA Update Service");
+    //Serial.println("Starting OTA Update Service");
     _arduinoOTA = new ArduinoOTAClass;
     _arduinoOTA->setPort(_settings.port);
     _arduinoOTA->setPassword(_settings.password.c_str());

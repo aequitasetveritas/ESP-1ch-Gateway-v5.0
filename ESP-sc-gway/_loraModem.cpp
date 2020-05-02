@@ -55,6 +55,7 @@ extern uint8_t pdebug;
 
 extern uint32_t cp_nb_rx_rcv;
 extern uint32_t cp_nb_rx_ok;
+extern uint32_t cp_txnb; // Paquetes TX
 
 uint8_t payLoad[128];
 
@@ -935,7 +936,7 @@ void txLoraModem(uint8_t *payLoad, uint8_t payLength, uint32_t tmst, uint8_t sfT
 	
 	// 16. Initiate actual transmission of FiFo
 	opmode(OPMODE_TX);											// set 0x01 to 0x03 (actual value becomes 0x83)
-	
+	cp_txnb++;
 }// txLoraModem
 
 

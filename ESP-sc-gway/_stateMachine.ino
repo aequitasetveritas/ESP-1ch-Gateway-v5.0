@@ -81,7 +81,7 @@ void stateMachine()
 	uint8_t intr  = flags & ( ~ mask );				// Only react on non masked interrupts
 	uint8_t rssi;
 	_event=0;										// Reset the interrupt detector	
-	
+	//Serial.println(intr,HEX);
 #if DUSB>=1
 	if (intr != flags) {
 		dbgp(F("FLAG  ::"));

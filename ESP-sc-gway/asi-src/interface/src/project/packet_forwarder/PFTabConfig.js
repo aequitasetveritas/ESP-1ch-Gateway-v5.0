@@ -92,6 +92,7 @@ function PFConfigForm(props) {
           onChange={handleValueChange('protocolo')}>
           <MenuItem value={1}>Semtech PF - UDP (Solo WiFi)</MenuItem>
           <MenuItem value={2}>Chirpstack Bridge - MQTT/TCP</MenuItem>
+          <MenuItem value={3}>Thingsboard Compat - MQTT/TCP</MenuItem>
         </SelectValidator>
 
       {settings.protocolo === 1 ? 
@@ -178,7 +179,12 @@ function PFConfigForm(props) {
           margin="normal"
           />
 
-      <TextValidator
+      
+
+
+      {/*
+
+        <TextValidator
           validators={['required', 'isNumber', 'minNumber:15', 'maxNumber:65535']}
           errorMessages={['Es requerido', "Debe ser un número", "Debe ser mayor a 15 ", "Debe ser menor a 65535"]}
           name="keepAlive"
@@ -188,9 +194,7 @@ function PFConfigForm(props) {
           onChange={handleValueChange('keepAlive')}
           margin="normal"
           />
-
-
-      {/*
+          
         <SelectValidator name="sf" label="Spreading Factor" value={loraSettings.sf} className={classes.selectField}
           onChange={handleValueChange('sf')}>
           <MenuItem value={7}>7</MenuItem>

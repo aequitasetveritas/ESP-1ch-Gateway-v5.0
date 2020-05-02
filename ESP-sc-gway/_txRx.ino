@@ -362,6 +362,7 @@ int buildPacket(uint32_t tmst, uint8_t *buff_up, struct LoraUp up_packet, bool i
 	uint8_t *message = up_packet.payLoad;
 	char messageLength = up_packet.payLength;
 
+	
 	// Chequear si el paquete es custom agrotools
 	dbgpl("RX lora");
 	for (uint8_t i = 0; i < up_packet.payLength; i++)
@@ -380,7 +381,16 @@ int buildPacket(uint32_t tmst, uint8_t *buff_up, struct LoraUp up_packet, bool i
 	dbgpl((int)messageLength);
 	dbgp("Calculed Length ");
 	dbgpl(message[19] + 20); // 16 = payload + overhead
-	if ((messageLength == (message[19] + 20)) || (messageLength == (message[19] + 16)))
+	if(settings_protocol() == MODO_AGROTOOLS){
+		LoraUp.sf = 12;
+		// Use gBase64 library to fill in the data string
+		uint8_t tmp[128];
+		if(messageLength <= 128){
+			LoraUp.payLength = Base64.encode((char *)tmp, (char *)message, messageLength);
+			memcpy((char *)LoraUp.payLoad, tmp, LoraUp.payLength);
+		}
+	}
+	else if ((messageLength == (message[19] + 20)) || (messageLength == (message[19] + 16)))
 	{
 		// Custom agrotools - Agregar LoraWan wrap
 		dbgpl("Custom agrotools");
@@ -679,7 +689,7 @@ int buildPacket(uint32_t tmst, uint8_t *buff_up, struct LoraUp up_packet, bool i
 		return (-1);
 	}
 #endif													// DUSB
-	Base64.encode(b64, (char *)message, messageLength); // max 341
+	//Base64.encode(b64, (char *)message, messageLength); // max 341
 	// start composing datagram with the header
 	uint8_t token_h = (uint8_t)rand(); // random token
 	uint8_t token_l = (uint8_t)rand(); // random token
@@ -841,7 +851,7 @@ int receivePacket()
 	// Handle the physical data read from LoraUp
 	if (LoraUp.payLength > 0)
 	{
-
+		//Serial.println("PACKETTRX");
 		// externally received packet, so last parameter is false (==LoRa external)
 		int build_index = buildPacket(tmst, buff_up, LoraUp, false);
 
@@ -878,6 +888,8 @@ int receivePacket()
 			{
 				return (-1); // received a message
 			}
+		}else if( proto == MODO_AGROTOOLS){
+			mqtt_sendTBPacket(LoraUp);
 		}
 
 		yield();

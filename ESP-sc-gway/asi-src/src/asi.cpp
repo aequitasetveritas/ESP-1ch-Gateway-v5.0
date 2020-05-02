@@ -52,3 +52,7 @@ void asi_forceGetAllRadioSettings(){
 PFListaSettings asi_pfSettings(){
   return pfSettings.fetch();
 }
+
+LoraListadeSettings asi_loraSettings(){
+  return loraSettings.fetch();
+}

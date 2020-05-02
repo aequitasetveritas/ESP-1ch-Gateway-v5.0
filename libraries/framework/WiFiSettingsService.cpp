@@ -122,7 +122,7 @@ void WiFiSettingsService::manageSTA() {
   }
   // Connect or reconnect as required
   if ((WiFi.getMode() & WIFI_STA) == 0) {
-    Serial.println("Connecting to WiFi.");
+    // Serial.println("Connecting to WiFi.");
     if (_settings.staticIPConfig) {
       // configure for static IP
       WiFi.config(_settings.localIP, _settings.gatewayIP, _settings.subnetMask, _settings.dnsIP1, _settings.dnsIP2);
