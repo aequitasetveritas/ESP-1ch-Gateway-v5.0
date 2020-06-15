@@ -591,7 +591,7 @@ void stateMachine()
 			
 			// If we are here, no CRC error occurred, start timer
 #if DUSB>=1
-			unsigned long ffTime = micros();	
+			//unsigned long ffTime = micros();	
 #endif			
 			// There should not be an error in the message
 			LoraUp.payLoad[0]= 0x00;								// Empty the message

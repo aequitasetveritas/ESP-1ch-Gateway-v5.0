@@ -54,12 +54,12 @@
 // Local include files
 #include "_loraModem.h"
 #include "loraFiles.h"
-//#include "sensor.h"
-//#include "oLED.h"
 
 // Interfaz de administracion
 #include "asi-src/src/asi.h"
 #include "asi-src/src/PacketForwarder.h"
+
+#include "estado.h"
 
 #include "utils.h"
 #include <pb_common.h>
@@ -84,13 +84,6 @@ extern "C"
 #include "lwip/dns.h"
 }
 
-#if WIFIMANAGER == 1
-#include <WiFiManager.h> // Library for ESP WiFi config through an AP
-#endif
-
-#if (GATEWAYNODE == 1) || (_LOCALSERVER == 1)
-#include "AES-128_V10.h"
-#endif
 
 // ----------- Specific ESP32 stuff --------------
 #if ESP32_ARCH == 1 // IF ESP32
@@ -118,14 +111,6 @@ extern "C"
 #include "user_interface.h"
 #include "c_types.h"
 }
-#if A_SERVER == 1
-#include <ESP8266WebServer.h>
-#include <Streaming.h> // http://arduiniana.org/libraries/streaming/
-#endif				   //A_SERVER
-#if A_OTA == 1
-#include <ESP8266httpUpdate.h>
-#include <ArduinoOTA.h>
-#endif //OTA
 
 #endif //ESP_ARCH
 
@@ -133,22 +118,7 @@ extern "C"
 uint8_t debug = 1;	   // Debug level! 0 is no msgs, 1 normal, 2 extensive
 uint8_t pdebug = 0xFF; // Allow all atterns (departments)
 
-#if GATEWAYNODE == 1
-#if _GPS == 1
-#include <TinyGPS++.h>
-TinyGPSPlus gps;
-HardwareSerial Serial1(1);
-#endif
-#endif
 
-// You can switch webserver off if not necessary but probably better to leave it in.
-#if A_SERVER == 1
-#if ESP32_ARCH == 1
-ESP32WebServer server(A_SERVERPORT);
-#else
-ESP8266WebServer server(A_SERVERPORT);
-#endif
-#endif
 using namespace std;
 
 byte currentMode = 0x81;
@@ -204,9 +174,6 @@ uint32_t statTime = 0;	// last time we sent a stat message to server
 uint32_t pulltime = 0;	// last time we sent a pull_data request to server
 //uint32_t lastTmst = 0;							// Last activity Timer
 
-#if A_SERVER == 1
-uint32_t wwwtime = 0;
-#endif
 #if NTP_INTR == 0
 uint32_t ntptimer = 0;
 #endif
@@ -215,9 +182,6 @@ uint32_t ntptimer = 0;
 #define RX_BUFF_SIZE 1024 // Downstream received from MQTT
 #define STATUS_SIZE 512	  // Should(!) be enough based on the static text .. was 1024
 
-#if GATEWAYNODE == 1
-uint16_t frameCount = 0; // We write this to SPIFF file
-#endif
 
 // volatile bool inSPI This initial value of mutex is to be free,
 // which means that its value is 1 (!)
@@ -245,15 +209,10 @@ void ICACHE_RAM_ATTR Interrupt_1();
 void mqtt_reconnect();
 void mqtt_callback(char *topic, byte *payload, unsigned int length);
 int sendPacket(uint8_t *buf, uint8_t length);						  // _txRx.ino
-void setupWWW();													  // _wwwServer.ino
 void SerialTime();													  // _utils.ino
-static void printIP(IPAddress ipa, const char sep, String &response); // _wwwServer.ino
 
-void init_oLED(); // oLED.ino
-void acti_oLED();
-void addr_oLED();
 
-void setupOta(char *hostname);
+
 void initLoraModem(); // _loraModem.ino
 void cadScanner();
 void rxLoraModem();								 // _loraModem.ino
@@ -263,12 +222,6 @@ void stateMachine(); // _stateMachine.ino
 
 void SerialStat(uint8_t intr); // _utils.ino
 
-#if MUTEX == 1
-// Forward declarations
-void ICACHE_FLASH_ATTR CreateMutux(int *mutex);
-bool ICACHE_FLASH_ATTR GetMutex(int *mutex);
-void ICACHE_FLASH_ATTR ReleaseMutex(int *mutex);
-#endif
 
 // ----------------------------------------------------------------------------
 // Print leading '0' digits for hours(0) and second(0) when
@@ -277,8 +230,9 @@ void ICACHE_FLASH_ATTR ReleaseMutex(int *mutex);
 void printDigits(unsigned long digits)
 {
 	// utility function for digital clock display: prints leading 0
-	if (digits < 10)
+	if (digits < 10){
 		dbgp(F("0"));
+	}
 	dbgp(digits);
 }
 
@@ -289,50 +243,10 @@ void printHexDigit(uint8_t digit)
 {
 	// utility function for printing Hex Values with leading 0
 	if (digit < 0x10)
-		dbgp('0');
+		{dbgp('0');}
 	dbgp(digit, HEX);
 }
 
-// ----------------------------------------------------------------------------
-// Print the current time
-// ----------------------------------------------------------------------------
-static void printTime()
-{
-	switch (weekday())
-	{
-	case 1:
-		dbgp(F("Sunday"));
-		break;
-	case 2:
-		dbgp(F("Monday"));
-		break;
-	case 3:
-		dbgp(F("Tuesday"));
-		break;
-	case 4:
-		dbgp(F("Wednesday"));
-		break;
-	case 5:
-		dbgp(F("Thursday"));
-		break;
-	case 6:
-		dbgp(F("Friday"));
-		break;
-	case 7:
-		dbgp(F("Saturday"));
-		break;
-	default:
-		dbgp(F("ERROR"));
-		break;
-	}
-	dbgp(F(" "));
-	printDigits(hour());
-	dbgp(F(":"));
-	printDigits(minute());
-	dbgp(F(":"));
-	printDigits(second());
-	return;
-}
 
 // ----------------------------------------------------------------------------
 // Convert a float to string for printing
@@ -344,40 +258,12 @@ static void printTime()
 void ftoa(float f, char *val, int p)
 {
 
+	(void) p;
 	int int_part = (int)f;
 	float dec_part = f - (float)int_part;
 
 	int int_dec_part = dec_part * (10);
-	sprintf(val, "%d.%d00000", int_part, int_dec_part);
-
-	/*
-	int j = 1;
-	int ival, fval;
-	char b[7] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
-
-	for (int i = 0; i < p; i++)
-	{
-		j = j * 10;
-	}
-
-	ival = (int)f;				  // Make integer part
-	fval = (int)((f - ival) * j); // Make fraction. Has same sign as integer part
-	if (fval < 0)
-		fval = -fval; // So if it is negative make fraction positive again.
-					  // sprintf does NOT fit in memory
-	if ((f < 0) && (ival == 0))
-		strcat(val, "-");
-	strcat(val, itoa(ival, b, 10)); // Copy integer part first, base 10, null terminated
-	strcat(val, ".");				// Copy decimal point
-
-	itoa(fval, b, 10); // Copy fraction part base 10
-	for (int i = 0; i < (p - strlen(b)); i++)
-	{
-		strcat(val, "0"); // first number of 0 of faction?
-	}
-
-	// Fraction can be anything from 0 to 10^p , so can have less digits
-	strcat(val, b);*/
+	snprintf(val,15, "%d.%d00000", int_part, int_dec_part);
 }
 
 // ============================================================================
@@ -424,8 +310,9 @@ time_t getNtpTime()
 
 	if (!sendNtpRequest(ntpServer)) // Send the request for new time
 	{
-		if ((debug >= 0) && (pdebug & P_MAIN))
+		if ((debug > 0) && (pdebug & P_MAIN)){
 			dbgpl(F("M sendNtpRequest failed"));
+			}
 		return (0);
 	}
 
@@ -476,16 +363,6 @@ time_t getNtpTime()
 	return (0); // return 0 if unable to get the time
 }
 
-// ----------------------------------------------------------------------------
-// Set up regular synchronization of NTP server and the local time.
-// ----------------------------------------------------------------------------
-#if NTP_INTR == 1
-void setupTime()
-{
-	setSyncProvider(getNtpTime);
-	setSyncInterval(_NTP_INTERVAL);
-}
-#endif
 
 // ============================================================================
 // UDP  FUNCTIONS
@@ -835,7 +712,7 @@ int sendUdp(IPAddress server, int port, uint8_t *msg, int length)
 
 	yield();
 
-	if (Udp.write((unsigned char *)msg, length) != length)
+	if (Udp.write((unsigned char *)msg, length) != (unsigned int)length)
 	{
 #if DUSB >= 1
 		if ((debug <= 1) && (pdebug & P_MAIN))
@@ -915,7 +792,7 @@ void pullData()
 
 	uint8_t pullDataReq[12]; // status report as a JSON object
 	int pullIndex = 0;
-	int i;
+
 
 	uint8_t token_h = (uint8_t)rand(); // random token
 	uint8_t token_l = (uint8_t)rand(); // random token
@@ -940,8 +817,8 @@ void pullData()
 
 	//send the update
 
-	uint8_t *pullPtr;
-	pullPtr = pullDataReq,
+	// uint8_t *pullPtr;
+	// pullPtr = pullDataReq,
 #ifdef _TTNSERVER
 	sendUdp(ttnServer, _TTNPORT, pullDataReq, pullIndex);
 	yield();
@@ -955,9 +832,6 @@ void pullData()
 	}
 
 #endif
-#ifdef _THINGSERVER
-	sendUdp(thingServer, _THINGPORT, pullDataReq, pullIndex);
-#endif
 
 #if DUSB >= 1
 	if ((debug >= 2) && (pdebug & P_MAIN))
@@ -966,6 +840,7 @@ void pullData()
 		dbgp(F("M PKT_PULL_DATA request, len=<"));
 		dbgp(pullIndex);
 		dbgp(F("> "));
+		int i;
 		for (i = 0; i < pullIndex; i++)
 		{
 			dbgp(pullDataReq[i], HEX); // debug: display JSON stat
@@ -990,7 +865,7 @@ void sendstat()
 
 	uint8_t status_report[STATUS_SIZE]; // status report as a JSON object
 	char stat_timestamp[32];			// XXX was 24
-	time_t t;
+
 	char clat[10] = {0};
 	char clon[10] = {0};
 
@@ -1016,10 +891,10 @@ void sendstat()
 
 	stat_index = 12; // 12-byte header
 
-	t = now(); // get timestamp for statistics
+
 
 	// XXX Using CET as the current timezone. Change to your timezone
-	sprintf(stat_timestamp, "%04d-%02d-%02d %02d:%02d:%02d CET", year(), month(), day(), hour(), minute(), second());
+	snprintf(stat_timestamp,24, "%04d-%02d-%02d %02d:%02d:%02d CET", year(), month(), day(), hour(), minute(), second());
 	yield();
 
 	ftoa(lat, clat, 5); // Convert lat to char array with 5 decimals
@@ -1075,18 +950,20 @@ void sendstat()
 // ----------------------------------------------------------------------------
 void setup()
 {
-	lcd_init();
+	//lcd_init();
 
 	// Pins are defined and set in loraModem.h
 	pinMode(pins.ss, OUTPUT);
 	digitalWrite(pins.ss, HIGH);
-	pinMode(pins.rst, OUTPUT);
-	pinMode(pins.dio0, INPUT); // This pin is interrupt
-	pinMode(pins.dio1, INPUT); // This pin is interrupt
-							   //pinMode(pins.dio2, INPUT);
+	
+	pinMode(pins.rst, OUTPUT); // RESET
+	pinMode(pins.dio0, INPUT); // DIO0 This pin is interrupt
+
+	pinMode(5, OUTPUT); // DTR
 
 	// Init the SPI pins
 	SPI.begin();
+	
 	delay(500);
 
 	Serial.begin(_BAUDRATE); // As fast as possible for bus
@@ -1139,57 +1016,10 @@ void setup()
 	asi_begin();
 	asi_loop();
 	asi_forceGetAllRadioSettings();
+
+	estadoInit();
+
 	yield();
-
-	/* int8_t res = WiFi.waitForConnectResult();
-	if (res != WL_CONNECTED)
-	{
-		dbgpl("No conectado");
-	}
-	// If we are here we are connected to WLAN
-	// So now test the UDP function
-	if (!UDPconnect())
-	{
-		dbgpl(F("Error UDPconnect"));
-	}
-	delay(200);
-*/
-
-	//################################################### Time ###################
-	// Set the NTP Time
-	// As long as the time has not been set we try to set the time.
-	// #if NTP_INTR == 1
-	// 	setupTime(); // Set NTP time host and interval
-	// #else
-	// 	// If not using the standard libraries, do a manual setting
-	// 	// of the time. This meyhod works more reliable than the
-	// 	// interrupt driven method.
-
-	// 	//setTime((time_t)getNtpTime());
-	// 	while (timeStatus() == timeNotSet)
-	// 	{
-	// #if DUSB >= 1
-	// 		if ((debug >= 0) && (pdebug & P_MAIN))
-	// 			dbgpl(F("M setupTime:: Time not set (yet)"));
-	// #endif
-	// 		delay(500);
-	// 		time_t newTime;
-	// 		newTime = (time_t)getNtpTime();
-	// 		if (newTime != 0)
-	// 			setTime(newTime);
-	// 	}
-	// 	// When we are here we succeeded in getting the time
-	// 	startTime = now(); // Time in seconds
-	// #if DUSB >= 1
-	// 	dbgp("Time: ");
-	// 	printTime();
-	// 	dbgpl();
-	// #endif
-	// 	//writeGwayCfg(CONFIGFILE);
-	// #if DUSB >= 1
-	// 	//dbgpl(F("Gateway configuration saved"));
-	// #endif
-	// #endif //NTP_INTR
 
 	delay(100); // Wait after setup
 
@@ -1215,6 +1045,9 @@ void setup()
 	dbgpl(" Mhz.");
 	// Setup ad initialise LoRa state machine of _loramModem.ino
 	_state = S_INIT;
+
+
+
 	initLoraModem();
 
 	if (cadGet())
@@ -1228,6 +1061,7 @@ void setup()
 		_state = S_RX;
 		rxLoraModem();
 	}
+
 	LoraUp.payLoad[0] = 0;
 	LoraUp.payLength = 0; // Init the length to 0
 
@@ -1237,14 +1071,6 @@ void setup()
 	{
 		//SPI.usingInterrupt(digitalPinToInterrupt(pins.dio0));
 		attachInterrupt(pins.dio0, Interrupt_0, RISING); // Share interrupts
-	}
-	// Or in the traditional Comresult case
-	else
-	{
-		//SPI.usingInterrupt(digitalPinToInterrupt(pins.dio0));
-		//SPI.usingInterrupt(digitalPinToInterrupt(pins.dio1));
-		attachInterrupt(pins.dio0, Interrupt_0, RISING); // Separate interrupts
-		attachInterrupt(pins.dio1, Interrupt_1, RISING); // Separate interrupts
 	}
 
 	// ###################### MQTT Init #################################
@@ -1286,7 +1112,7 @@ volatile uint8_t mqtt_down_flag = 0;
 
 void loop()
 {
-	uint32_t uSeconds; // micro seconds
+	
 	int packetSize;
 	uint32_t nowSeconds = now();
 	static bool udpInit = false; // Flags para inicializar UDP y Time.
@@ -1295,6 +1121,9 @@ void loop()
 	S_PROTOCOL protocolo = settings_protocol();
 	S_BACKBONE backbone = asi_loraSettings()._backbone == 2 ? BACKBONE_GPRS : BACKBONE_WIFI; //settings_backbone();
 
+	asi_loop(); //Interface Loop
+	stateMachine(); // do the state machine
+	
 	// ######################## UDP Init ####################################################
 	if (!udpInit && (protocolo == SEMTECH_PF_UDP) && (backbone == BACKBONE_WIFI))
 	{
@@ -1305,13 +1134,13 @@ void loop()
 				die("Setup:: ERROR hostByName NTP");
 			};
 			delay(100);
-#ifdef _TTNSERVER
+	#ifdef _TTNSERVER
 			if (!WiFi.hostByName(_TTNSERVER, ttnServer)) // Use DNS to get server IP once
 			{
 				die("Setup:: ERROR hostByName TTN");
 			};
 			delay(100);
-#endif
+	#endif
 			udpInit = true;
 		}
 	}
@@ -1328,7 +1157,10 @@ void loop()
 		{
 			gprs_cwt = millis();
 			if(!gprs_connected()){
+				setEConnGprs(false);
 				gprs_init();
+			}else{
+				setEConnGprs(true);
 			}
 		}
 		else
@@ -1370,11 +1202,6 @@ void loop()
 		}
 	}
 
-	asi_loop(); //Interface Loop
-
-	// check for event value, which means that an interrupt has arrived.
-	// In this case we handle the interrupt ( e.g. message received)
-	// in userspace in loop().
 
 	if (protocolo == MQTTBRIDGE_TCP)
 	{
@@ -1389,14 +1216,14 @@ void loop()
 		//yield();
 	}
 
-	stateMachine(); // do the state machine
+
 
 	// After a quiet period, make sure we reinit the modem and state machine.
 	// The interval is in seconds (about 15 seconds) as this re-init
 	// is a heavy operation.
 	// SO it will kick in if there are not many messages for the gateway.
 	// Note: Be careful that it does not happen too often in normal operation.
-	//
+	// Esto ocurre 1 vez a los 15 segundos posteriores al ultimo paquete.
 	if (((nowSeconds - statr[0].tmst) > _MSG_INTERVAL) &&
 		(msgTime <= statr[0].tmst))
 	{
@@ -1419,14 +1246,16 @@ void loop()
 			_state = S_SCAN;
 			global_sf = SF7;
 			cadScanner();
+			writeRegister(REG_IRQ_FLAGS_MASK, (uint8_t)0x00);
+			writeRegister(REG_IRQ_FLAGS, (uint8_t)0xFF); // Reset all interrupt flags
 		}
 		else
 		{
-			_state = S_RX;
-			rxLoraModem();
+			//_state = S_RX;
+			//initLoraModem();
+			//rxLoraModem();
 		}
-		writeRegister(REG_IRQ_FLAGS_MASK, (uint8_t)0x00);
-		writeRegister(REG_IRQ_FLAGS, (uint8_t)0xFF); // Reset all interrupt flags
+		
 		msgTime = nowSeconds;
 	}
 
@@ -1439,8 +1268,9 @@ void loop()
 	{
 		return;
 	}
-	else
-		yield();
+	else{
+		// yield();
+	}
 
 	//################################################ DOWNSTREAM UDP ########################################
 	if ((protocolo == SEMTECH_PF_UDP) && (WiFi.status() == WL_CONNECTED))
@@ -1469,58 +1299,10 @@ void loop()
 		}
 	}
 
-	// ########################## LAN Reconect ##################################################
-	// If we are not connected, try to connect.
-	// We will not read Udp in this loop cycle then
-
-	/*if ((WlanConnect(1) < 0) || (backbone == BACKBONE_GPRS))
-	{
-#if DUSB >= 1
-		if ((debug >= 0) && (pdebug & P_MAIN))
-			dbgpl(F("M ERROR reconnect WLAN"));
-#endif
-		yield();
-		//return; // Exit loop if no WLAN connected
-	}
-	else
-	{
-
-		// So if we are connected
-		// Receive UDP PUSH_ACK messages from server. (*2, par. 3.3)
-		// This is important since the TTN broker will return confirmation
-		// messages on UDP for every message sent by the gateway. So we have to consume them.
-		// As we do not know when the server will respond, we test in every loop.
-		//
-		if (protocolo == SEMTECH_PF_UDP)
-		{
-			while ((packetSize = Udp.parsePacket()) > 0)
-			{
-#if DUSB >= 2
-				dbgpl(F("loop:: readUdp calling"));
-#endif
-				// DOWNSTREAM
-				// Packet may be PKT_PUSH_ACK (0x01), PKT_PULL_ACK (0x03) or PKT_PULL_RESP (0x04)
-				// This command is found in byte 4 (buffer[3])
-				if (readUdp(packetSize) <= 0)
-				{
-#if DUSB >= 1
-					if ((debug > 0) && (pdebug & P_MAIN))
-						dbgpl(F("M readUDP error"));
-#endif
-					break;
-				}
-				// Now we know we succesfully received message from host
-				else
-				{
-					//_event=1;								// Could be done double if more messages received
-				}
-			}
-		}
-	}*/
 
 	// ########################## END LAN Reconect ##################################################
 
-	yield(); // XXX 26/12/2017
+	// yield(); // XXX 26/12/2017
 
 	// ##################################################### Stat ############################################
 
@@ -1530,18 +1312,13 @@ void loop()
 	if ((nowSeconds - statTime) >= settings_stats_interval())
 	{ // Wake up every xx seconds
 
+		statTime = nowSeconds;
+
 		if (protocolo == MODO_AGROTOOLS)
 		{
 			mqtt_sendStat();
-			/* ¿Algo? */
 		}
-#if DUSB >= 1
-		if ((debug >= 1) && (pdebug & P_MAIN))
-		{
-			dbgp(F("M STAT:: ..."));
-			Serial.flush();
-		}
-#endif
+
 		if (protocolo == SEMTECH_PF_UDP)
 		{
 			sendstat(); // Show the status message and send to server
@@ -1554,16 +1331,20 @@ void loop()
 #if DUSB >= 1
 		if ((debug >= 1) && (pdebug & P_MAIN))
 		{
+			dbgp(F("M STAT:: ..."));
+			Serial.flush();
+		}
+		if ((debug >= 1) && (pdebug & P_MAIN))
+		{
 			dbgpl(F(" done"));
 			if (debug >= 2)
 				Serial.flush();
 		}
 #endif
 
-		statTime = nowSeconds;
+		return; // End loop()
 	}
 
-	yield();
 
 	if (protocolo == SEMTECH_PF_UDP)
 	{
@@ -1597,7 +1378,7 @@ void loop()
 #if NTP_INTR == 0
 	// Set the time in a manual way. Do not use setSyncProvider
 	// as this function may collide with SPI and other interrupts
-	yield(); // 26/12/2017
+	//yield(); // 26/12/2017
 	nowSeconds = now();
 	if (nowSeconds - ntptimer >= _NTP_INTERVAL)
 	{
@@ -1619,12 +1400,46 @@ void loop()
 		
 		if(((millis() - mqtt_loopwt) > 50)){
 			mqtt_loopwt = millis();
+
+			modemWakeup();
 			if(!(mqtt_client.loop())){
 				// No hay conexion
+				
+				setEConnMqttHost(false);
 				mqtt_reconnect();
+			}else{
+				
 			}
+			modemSleep();
 		}
 		
+	}
+
+
+// Si en 15 min no he recibido nada reiniciar el sistema 
+	if ( (nowSeconds - statr[0].tmst) > (15*60) ){
+		char mqtt_stat[200];
+
+		
+		snprintf(mqtt_stat, 200, "{\"freeHeap\":%d,\"heapFrag\":%d,\"forwardFail\": %d,\"msg\":\"NoMsgReinit\",\"DIO0\":%d,\"event\":%d}", ESP.getFreeHeap(), ESP.getHeapFragmentation(), cp_up_pkt_up_fail, digitalRead(15)?1:0, _event);
+		
+		modemWakeup();
+		if(!(mqtt_client.publish("v1/devices/me/telemetry", mqtt_stat, strlen(mqtt_stat)))){
+			// Fallo
+		}
+		modemSleep();
+
+		initLoraModem(); // Esto es para prevenir que D0 ponga en HIGH a GPIO15 al reinicio.
+		ESP.reset();
+		return;
+	}
+
+	/* Cada 15 segundos desde el ultimo paquete reiniciar lora */
+	static uint32_t s;
+	if ( ((nowSeconds - statr[0].tmst) > (15))  && ((millis() - s)>15000) ){
+		//initLoraModem();
+		//rxLoraModem();
+		s = millis();
 	}
 
 	// lcd_update(cp_nb_rx_rcv, cp_nb_rx_ok, freq, global_sf);
@@ -1637,7 +1452,7 @@ void lora_settings_reconfig(int sf, int bw, uint32_t frec)
 	uint8_t i;
 	for (i = 0; i < 10; i++)
 	{
-		if (freqs[i] == freq)
+		if ((uint32_t)freqs[i] == freq)
 		{
 			break;
 		}
@@ -1698,7 +1513,7 @@ uint8_t downlink_size;
 
 bool pb_downlink_id_decode(pb_istream_t *stream, const pb_field_t *field, void **arg)
 {
-	uint8_t buffer[1024] = {0};
+
 	uint32_t *destino = (uint32_t *)*arg;
 
 	/* We could read block-by-block to avoid the large buffer... */
@@ -1812,7 +1627,7 @@ bool pb_set_gateway_id(pb_ostream_t *stream, const pb_field_t *field, void *cons
 
 bool pb_set_ip(pb_ostream_t *stream, const pb_field_t *field, void *const *arg)
 {
-	char *str = "192.168.88.4"; // TODO
+	const char *str = "192.168.88.4"; // TODO
 
 	if (!pb_encode_tag_for_field(stream, field))
 		return false;
@@ -1822,7 +1637,7 @@ bool pb_set_ip(pb_ostream_t *stream, const pb_field_t *field, void *const *arg)
 
 bool pb_set_config_version(pb_ostream_t *stream, const pb_field_t *field, void *const *arg)
 {
-	char *str = "1.2.3";
+	const char *str = "1.2.3";
 
 	if (!pb_encode_tag_for_field(stream, field))
 		return false;
@@ -1832,7 +1647,7 @@ bool pb_set_config_version(pb_ostream_t *stream, const pb_field_t *field, void *
 
 bool pb_set_code_rate(pb_ostream_t *stream, const pb_field_t *field, void *const *arg)
 {
-	char *str = "4/5";
+	const char *str = "4/5";
 
 	if (!pb_encode_tag_for_field(stream, field))
 		return false;
@@ -1869,8 +1684,8 @@ bool pb_set_downlink_id(pb_ostream_t *stream, const pb_field_t *field, void *con
 	dbgpl((uint32_t)*arg);
 	for (uint8_t i = 0; i < downlink_size; i++)
 	{
-		if (str[i] <= 0xF)
-			dbgp('0');
+		if (str[i] <= 0xF){
+			dbgp('0');}
 		dbgp(str[i], HEX);
 		dbgp(' ');
 	}
@@ -1884,8 +1699,15 @@ bool pb_set_downlink_id(pb_ostream_t *stream, const pb_field_t *field, void *con
 void mqtt_sendStat()
 {
 	if(settings_protocol() == MODO_AGROTOOLS){
-
+		char mqtt_stat[200];
+		snprintf(mqtt_stat, 200, "{\"freeHeap\":%d,\"heapFrag\":%d,\"forwardFail\": %d}", ESP.getFreeHeap(), ESP.getHeapFragmentation(), cp_up_pkt_up_fail);
 		
+		modemWakeup();
+		if(!(mqtt_client.publish("v1/devices/me/telemetry", mqtt_stat, strlen(mqtt_stat)))){
+			// Fallo
+		}
+		modemSleep();
+
 		return;
 	}
 
@@ -2003,6 +1825,8 @@ void mqtt_send_ack(uint8_t *downId)
 void mqtt_reconnect()
 {
 	// Loop until we're reconnected
+	modemWakeup();
+
 	if (!mqtt_client.connected())
 	{
 		dbgp("Attempting MQTT connection..");
@@ -2012,12 +1836,16 @@ void mqtt_reconnect()
 		// Attempt to connect
 		if (settings_protocol() == MODO_AGROTOOLS)
 		{
-			if (mqtt_client.connect(clientId.c_str(), settings_tb_mqtt_user(), ""))
+			if (mqtt_client.connect(clientId.c_str(), settings_tb_mqtt_user(), "","v1/devices/me/telemetry",0,0,"{\"msg\":\"Offline\"}"))
 			{
+				mqtt_client.publish("v1/devices/me/telemetry","{\"msg\":\"On\"}");
 				mqtt_client.subscribe("v1/devices/me/rpc/request/+");
+				setEConnMqttHost(true);
+				//modem.sleepEnable(true);
 			}
 			else
 			{
+				setEConnMqttHost(false);
 				dbgp("failed, rc=");
 				dbgp(mqtt_client.state());
 				dbgpl(" try again in 5 seconds");
@@ -2045,11 +1873,15 @@ void mqtt_reconnect()
 			}
 		}
 	}
+
+	modemSleep();
 }
 
 void gprs_init()
 {
 
+	modemWakeup();
+	
 	// !!!!!!!!!!!
 	// Set your reset, enable, power pins here
 	// !!!!!!!!!!!
@@ -2062,7 +1894,7 @@ void gprs_init()
 	yield();
 	// modem.init();
 
-	String modemInfo = modem.getModemInfo();
+	//String modemInfo = modem.getModemInfo();
 	//lcd_line3(modemInfo.c_str());
 
 	//SerialMon.print("Modem Info: ");
@@ -2087,8 +1919,11 @@ void gprs_init()
 
 	if (modem.isNetworkConnected())
 	{
+		setEConnRed(true);
 		// SerialMon.println("Network connected");
 		// lcd_line3("GPRS Nwrk CONN");
+	}else{
+		setEConnRed(false);
 	}
 
 	// GPRS connection parameters are usually set after network registration
@@ -2096,6 +1931,7 @@ void gprs_init()
 	//SerialMon.print(apn);
 	if (!modem.gprsConnect(settings_apn(), settings_gprs_user(), settings_gprs_pass()))
 	{
+		setEConnGprs(false);
 		//SerialMon.println(" fail");
 		// delay(10000);
 		// lcd_line3("GPRS CONN Fail");
@@ -2105,14 +1941,21 @@ void gprs_init()
 
 	if (modem.isGprsConnected())
 	{
+		setEConnGprs(true);
 		// SerialMon.println("GPRS connected");
 		// lcd_line3("GPRS CONN Ok");
 	}
+
+	modemSleep();
+	
 }
 
 bool gprs_connected()
 {
-	return modem.isGprsConnected();
+	modemWakeup();
+	bool c = modem.isGprsConnected();
+	modemSleep();
+	return c;
 }
 
 void pf_settings_callback(PFListaSettings settings)
@@ -2134,20 +1977,25 @@ void pf_settings_callback(PFListaSettings settings)
 
 void mqtt_sendTBPacket(struct LoraUp  up_packet)
 {
+	(void) up_packet;
 	char mqtt_msg[200];
+
 	strncpy(mqtt_msg, "{\"rxpl\":\"", 150);
 	memcpy(mqtt_msg + 9, LoraUp.payLoad, LoraUp.payLength);
-	strncpy(mqtt_msg + 9 + LoraUp.payLength, "\"}",141);
+	
+	snprintf(mqtt_msg + 9 + LoraUp.payLength, 141, "\",\"heapFrag\":%d, \"freeHeap\":%d}", ESP.getHeapFragmentation(), ESP.getFreeHeap());
+
+	modemWakeup();
 
 	if(mqtt_client.publish("v1/devices/me/telemetry", mqtt_msg, strlen(mqtt_msg))){
 		cp_up_pkt_fwd++;
 		
 	}else{
 		// retry 1
-		Serial.println("FALLO PUBLISH!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
-		Serial.println(LoraUp.payLength);
-		Serial.write(LoraUp.payLoad,128);
-		Serial.println();
+		//Serial.println("FALLO PUBLISH!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+		//Serial.println(LoraUp.payLength);
+		//Serial.write(LoraUp.payLoad,128);
+		//Serial.println();
 		if(mqtt_client.publish("v1/devices/me/telemetry", mqtt_msg, strlen(mqtt_msg))){
 			cp_up_pkt_fwd++;
 		}else{
@@ -2155,4 +2003,21 @@ void mqtt_sendTBPacket(struct LoraUp  up_packet)
 		}
 
 	}
+
+	modemSleep();
+}
+
+
+void modemWakeup(){
+	//pinMode(5, OUTPUT);
+	//digitalWrite(5, LOW);
+	//modem.sleepEnable(false);
+	//modem.sleepEnable(false);
+}
+
+
+void modemSleep(){
+	//digitalWrite(5, HIGH);
+	//pinMode(5,INPUT); // Dejo que el DTR pullup lo lleve
+	//modem.sleepEnable(true);
 }

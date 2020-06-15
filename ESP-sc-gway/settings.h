@@ -23,7 +23,6 @@ const char * settings_gprs_pass();
 uint16_t settings_stats_interval();
 
 
-S_MODO settings_modo();
 uint16_t settings_tb_mqtt_port();
 const char * settings_tb_mqtt_server();
 const char * settings_tb_mqtt_user(); //AccessToken

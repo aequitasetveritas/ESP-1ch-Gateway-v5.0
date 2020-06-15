@@ -1,13 +1,16 @@
 #include "settings.h"
 #include "asi-src/src/asi.h"
 #include "asi-src/src/PacketForwarder.h"
+//#include "asi-src/src/gprsSettings.h"
 
 // ############################## MQTT #########################################ar
 
 static char host[100];
 static char user[100];
 static char pass[100];
-
+static char apn[100];
+static char gprsUser[50];
+static char gprsPass[50];
 
 const char * settings_mqtt_server(){
 	PFListaSettings s = asi_pfSettings();
@@ -32,11 +35,11 @@ const char * settings_mqtt_pass(){
 	return pass;
 }
 
+
 uint16_t settings_stats_interval(){
 	PFListaSettings s = asi_pfSettings();
 	return s._statInterval;
 }
-
 
 
 S_PROTOCOL settings_protocol(){
@@ -48,12 +51,8 @@ S_PROTOCOL settings_protocol(){
 	}else if(s._protocolo == 3){
 		return MODO_AGROTOOLS;
 	}
+	return MODO_AGROTOOLS;
 }
-
-
-
-
-
 
 
 S_BACKBONE settings_backbone(){
@@ -61,31 +60,34 @@ S_BACKBONE settings_backbone(){
 }
 
 const char * settings_apn(){
-	return "internet.personal.com";
+	GprsListadeSettings s = asi_gprsSettings();
+	memcpy(apn, s._apn.c_str(), s._apn.length());
+	return apn;
 }
 
 const char * settings_gprs_user(){
-	return "";
+	GprsListadeSettings s = asi_gprsSettings();
+	memcpy(gprsUser, s._user.c_str(), s._user.length());
+	return gprsUser;
 }
 
 const char * settings_gprs_pass(){
-	return "";
+	GprsListadeSettings s = asi_gprsSettings();
+	memcpy(gprsPass, s._pass.c_str(), s._pass.length());
+	return gprsPass;
 }
 
 
-S_MODO settings_modo(){
-	return MODO_CUSTOM;
-}
 
 uint16_t settings_tb_mqtt_port(){
-	return 1883;
+	return settings_mqtt_port();
 }
 
 const char * settings_tb_mqtt_server(){
-	return "agrotools.qts-ar.com.ar";
+	return settings_mqtt_server();
 }
 
 const char * settings_tb_mqtt_user(){
-	return "eT9STX5PGgNS7Nvggc3F";
+	return settings_mqtt_user();
 } //AccessToken
 

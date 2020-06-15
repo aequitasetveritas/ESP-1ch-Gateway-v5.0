@@ -91,13 +91,13 @@ void SerialTime()
 	uint32_t tmin = minute();
 	uint32_t tsec = second();
 			
-	if (thrs<10) dbgp('0'); dbgp(thrs);
+	if (thrs<10) {dbgp('0');} dbgp(thrs);
 	dbgp(':');
-	if (tmin<10) dbgp('0'); dbgp(tmin);
+	if (tmin<10) {dbgp('0');} dbgp(tmin);
 	dbgp(':');
-	if (tsec<10) dbgp('0'); dbgp(tsec);
+	if (tsec<10) {dbgp('0');} dbgp(tsec);
 			
-	if (debug>=2) Serial.flush();
+	if (debug>=2) {Serial.flush();}
 		
 	return;
 }

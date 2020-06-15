@@ -37,7 +37,7 @@
 // If set to 0, not USB Serial prints are done
 // Set to 1 it will print all user level messages (with correct debug set)
 // If set to 2 it will also print interrupt messages (not recommended)
-#define DUSB 1
+#define DUSB 0
 
 // Define whether we should do a formatting of SPIFFS when starting the gateway
 // This is usually a good idea if the webserver is interrupted halfway a writing

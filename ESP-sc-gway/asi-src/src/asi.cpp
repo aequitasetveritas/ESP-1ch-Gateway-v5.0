@@ -3,6 +3,9 @@
 #include "Lora.h"
 #include "PacketForwarder.h"
 #include <ESP8266React.h>
+#include "gprsSettings.h"
+#include "gprsStatus.h"
+
 #include <FS.h>
 
 #define SERIAL_BAUD_RATE 115200
@@ -12,6 +15,9 @@ ESP8266React esp8266React(&server, &SPIFFS);
 DemoProject demoProject = DemoProject(&server, &SPIFFS, esp8266React.getSecurityManager());
 LoraSettings loraSettings = LoraSettings(&server, &SPIFFS, esp8266React.getSecurityManager());
 PFSettings pfSettings = PFSettings(&server, &SPIFFS, esp8266React.getSecurityManager());
+GprsSettings gprsSettings = GprsSettings(&server, &SPIFFS, esp8266React.getSecurityManager());
+GprsStatus gprsStatus = GprsStatus(&server,esp8266React.getSecurityManager());
+
 
 void asi_begin() {
 #ifdef ESP32
@@ -27,6 +33,7 @@ void asi_begin() {
   demoProject.begin();
   loraSettings.begin();
   pfSettings.begin();
+  gprsSettings.begin();
 
   // start the server
   server.begin();
@@ -55,4 +62,8 @@ PFListaSettings asi_pfSettings(){
 
 LoraListadeSettings asi_loraSettings(){
   return loraSettings.fetch();
+}
+
+GprsListadeSettings asi_gprsSettings(){
+  return gprsSettings.fetch();
 }

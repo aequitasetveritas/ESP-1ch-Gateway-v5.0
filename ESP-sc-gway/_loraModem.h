@@ -93,11 +93,11 @@ extern unsigned long detTime;
 // ----------------------------------------------------------------------------
 // Use your own pin definitions, and comment #error line below
 struct pins {
-	uint8_t dio0=15;		// GPIO26 / Dio0 used for one frequency and one SF
-	uint8_t dio1=15;		// GPIO26 / Used for CAD, may or not be shared with DIO0
-	uint8_t dio2=15;		// GPIO26 / Used for frequency hopping, don't care
-	uint8_t ss=16;			// GPIO18 / Dx. Select pin connected to GPIO18
-	uint8_t rst=4;			// GPIO0  / D3. Reset pin not used	
+	uint8_t dio0=15;		// GPIO15 / Dio0 used for one frequency and one SF
+	uint8_t dio1=15;		// GPIO15 / Used for CAD, may or not be shared with DIO0
+	uint8_t dio2=15;		// GPIO15 / Used for frequency hopping, don't care
+	uint8_t ss=16;			// GPIO16 / Dx. Select pin connected to GPIO18
+	uint8_t rst=4;			
 };
 
 extern struct pins pins;

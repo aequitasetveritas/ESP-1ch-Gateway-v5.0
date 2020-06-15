@@ -37,7 +37,7 @@ class GPRSTabConfig extends Component {
           errorMessage={errorMessage}
           render={() =>
             <GPRSConfigForm
-              loraSettings={data}
+              settings={data}
               onReset={loadData}
               onSubmit={saveData}
               handleSliderChange={handleSliderChange}
@@ -69,57 +69,53 @@ const useStyles = makeStyles(theme => ({
     marginTop: theme.spacing(2),
     marginBottom: theme.spacing(0.5)
   },
+  textField: {
+    width: "100%",
+    marginTop: theme.spacing(2),
+    marginBottom: theme.spacing(0.5)
+  },
 }));
 
 function GPRSConfigForm(props) {
-  const { gprsSettings, onSubmit, onReset, handleValueChange, handleSliderChange, handleCheckboxChange} = props;
-  console.log(gprsSettings);
+  const { settings, onSubmit, onReset, handleValueChange, handleSliderChange, handleCheckboxChange} = props;
+  console.log(settings);
   const classes = useStyles();
   return (
     <ValidatorForm onSubmit={onSubmit}>
-      {/*<Typography id="blink-speed-slider" className={classes.blinkSpeedLabel}>
-        Blink Speed
-      </Typography>*/}
 
-      {/* Modo 
-        bool _modo_lorawan;
-   uint32_t _frecuencia;
-   int _sf;
-   int _bw;
-   bool _cad;
-   uint8_t _backbone;
-};
-*/}
-      <SelectValidator name="apn" label="APN" value={gprsSettings.apn} className={classes.selectField}
-          onChange={handleValueChange('mode_lorawan')}>
-          <MenuItem value={true}>internet.datos.peros</MenuItem>
-          <MenuItem value={false}>Custom Lora</MenuItem>
-        </SelectValidator>
+        <TextValidator
+          validators={['matchRegexp:^.{1,100}$']}
+          errorMessages={['100 caracteres max']}
+          name="apn"
+          label="APN"
+          className={classes.textField}
+          value={settings.apn}
+          onChange={handleValueChange('apn')}
+          margin="normal"
+          />
 
+        <TextValidator
+          validators={['matchRegexp:^.{1,100}$']}
+          errorMessages={['100 caracteres max']}
+          name="user"
+          label="User"
+          className={classes.textField}
+          value={settings.user}
+          onChange={handleValueChange('user')}
+          margin="normal"
+          />
+
+        <TextValidator
+          validators={['matchRegexp:^.{1,100}$']}
+          errorMessages={['100 caracteres max']}
+          name="pass"
+          label="Password"
+          className={classes.textField}
+          value={settings.pass}
+          onChange={handleValueChange('pass')}
+          margin="normal"
+          />
       
-
-      {/*
-      <FormControlLabel className={classes.switchControl}
-          control={
-            <Switch
-              checked={ntpSettings.enabled}
-              onChange={handleCheckboxChange('enabled')}
-              value="enabled"
-              color="primary"
-            />
-          }
-          label="Enable NTP?"
-        /> 
-
-      <Slider
-        value={demoSettings.blink_speed}
-        valueLabelFormat={valueToPercentage}
-        aria-labelledby="blink-speed-slider"
-        valueLabelDisplay="on"
-        min={0}
-        max={255}
-        onChange={handleSliderChange('blink_speed')}
-      />*/}
       <Button startIcon={<SaveIcon />} variant="contained" color="primary" className={classes.button} type="submit">
         Save
       </Button>

@@ -47,7 +47,7 @@ void fakeLoraWanWrap(uint8_t *message, uint8_t *messageLen)
 	dbgp("FCount ");
 	dbgpl(FCount);
 	uint8_t fport = 0x10;
-	uint8_t mic[4] = {0x00, 0x00, 0x00, 0x00};
+	
 
 	uint8_t temp_buffer[100];
 
@@ -114,7 +114,7 @@ int sendPacket(uint8_t *buf, uint8_t length)
 	//		RxDelay (1 byte)
 	//		CFList (fill to 16 bytes)
 
-	int i = 0;
+	
 	StaticJsonDocument<312> jsonBuffer;
 	char *bufPtr = (char *)(buf);
 	buf[length] = 0;
@@ -163,8 +163,8 @@ int sendPacket(uint8_t *buf, uint8_t length)
 
 	// Not used in the protocol of Gateway TTN:
 	const char *datr = root["txpk"]["datr"]; // eg "SF7BW125"
-	const char *modu = root["txpk"]["modu"]; // =="LORA"
-	const char *codr = root["txpk"]["codr"]; // e.g. "4/5"
+	//const char *modu = root["txpk"]["modu"]; // =="LORA"
+	//const char *codr = root["txpk"]["codr"]; // e.g. "4/5"
 	//if (root["txpk"].containsKey("imme") ) {
 	//	const bool imme = root["txpk"]["imme"];			// Immediate Transmit (tmst don't care)
 	//}
@@ -214,7 +214,7 @@ int sendPacket(uint8_t *buf, uint8_t length)
 	Base64.decode((char *)payLoad, (char *)data, strlen(data));			   // Fill payload w decoded message
 
 	// Compute wait time in microseconds
-	uint32_t w = (uint32_t)(LoraDown.tmst - micros()); // Wait Time compute
+	// uint32_t w = (uint32_t)(LoraDown.tmst - micros()); // Wait Time compute
 
 // _STRICT_1CH determines ho we will react on downstream messages.
 // If STRICT==0, we will receive messags from the TTN gateway presumably on SF12/869.5MHz
@@ -307,6 +307,7 @@ int sendPacket(uint8_t *buf, uint8_t length)
 	else if ((debug >= 2) && (pdebug & P_TX))
 	{
 		dbgp(F("T Payload="));
+		int i;
 		for (i = 0; i < LoraDown.payLength; i++)
 		{
 			dbgp(payLoad[i], HEX);
@@ -357,7 +358,7 @@ int buildPacket(uint32_t tmst, uint8_t *buff_up, struct LoraUp up_packet, bool i
 	char cfreq[12] = {0}; // Character array to hold freq in MHz
 	//lastTmst = tmst;									// Following/according to spec
 	int buff_index = 0;
-	char b64[256];
+	
 
 	uint8_t *message = up_packet.payLoad;
 	char messageLength = up_packet.payLength;
@@ -387,7 +388,11 @@ int buildPacket(uint32_t tmst, uint8_t *buff_up, struct LoraUp up_packet, bool i
 		uint8_t tmp[128];
 		if(messageLength <= 128){
 			LoraUp.payLength = Base64.encode((char *)tmp, (char *)message, messageLength);
-			memcpy((char *)LoraUp.payLoad, tmp, LoraUp.payLength);
+			if(LoraUp.payLength < 128){
+				memcpy((char *)LoraUp.payLoad, tmp, LoraUp.payLength);
+			}else{
+				return 0;
+			}
 		}
 	}
 	else if ((messageLength == (message[19] + 20)) || (messageLength == (message[19] + 16)))
@@ -627,59 +632,18 @@ int buildPacket(uint32_t tmst, uint8_t *buff_up, struct LoraUp up_packet, bool i
 	}
 #endif // DUSB
 
-// Show received message status on OLED display
-#if OLED >= 1
-	char timBuff[20];
-	sprintf(timBuff, "%02i:%02i:%02i", hour(), minute(), second());
 
-	display.clear();
-	display.setFont(ArialMT_Plain_16);
-	display.setTextAlignment(TEXT_ALIGN_LEFT);
-
-	//	msg_oLED(timBuff, prssi-rssicorr, SNR, message)
-
-	display.drawString(0, 0, "Time: ");
-	display.drawString(40, 0, timBuff);
-
-	display.drawString(0, 16, "RSSI: ");
-	display.drawString(40, 16, String(prssi - rssicorr));
-
-	display.drawString(70, 16, ",SNR: ");
-	display.drawString(110, 16, String(SNR));
-
-	display.drawString(0, 32, "Addr: ");
-
-	if (message[4] < 0x10)
-		display.drawString(40, 32, "0" + String(message[4], HEX));
-	else
-		display.drawString(40, 32, String(message[4], HEX));
-	if (message[3] < 0x10)
-		display.drawString(61, 32, "0" + String(message[3], HEX));
-	else
-		display.drawString(61, 32, String(message[3], HEX));
-	if (message[2] < 0x10)
-		display.drawString(82, 32, "0" + String(message[2], HEX));
-	else
-		display.drawString(82, 32, String(message[2], HEX));
-	if (message[1] < 0x10)
-		display.drawString(103, 32, "0" + String(message[1], HEX));
-	else
-		display.drawString(103, 32, String(message[1], HEX));
-
-	display.drawString(0, 48, "LEN: ");
-	display.drawString(40, 48, String((int)messageLength));
-	display.display();
-	//yield();
-
-#endif //OLED>=1
+	if(settings_protocol()==MODO_AGROTOOLS){
+		return 0;
+	}
 
 	int j;
 
 	// XXX Base64 library is nopad. So we may have to add padding characters until
 	// 	message Length is multiple of 4!
 	// Encode message with messageLength into b64
-	int encodedLen = Base64.encodedLength(messageLength); // max 341
 #if DUSB >= 1
+	int encodedLen = Base64.encodedLength(messageLength); // max 341
 	if ((debug >= 1) && (encodedLen > 255) && (pdebug & P_RADIO))
 	{
 		dbgp(F("R buildPacket:: b64 err, len="));
@@ -782,7 +746,7 @@ int buildPacket(uint32_t tmst, uint8_t *buff_up, struct LoraUp up_packet, bool i
 	buff_index += 9;
 
 	// Use gBase64 library to fill in the data string
-	encodedLen = Base64.encodedLength(messageLength); // max 341
+	// encodedLen = Base64.encodedLength(messageLength); // max 341
 	j = Base64.encode((char *)(buff_up + buff_index), (char *)message, messageLength);
 
 	buff_index += j;
@@ -833,9 +797,9 @@ int buildPacket(uint32_t tmst, uint8_t *buff_up, struct LoraUp up_packet, bool i
 int receivePacket()
 {
 	uint8_t buff_up[TX_BUFF_SIZE]; // buffer to compose the upstream packet to backend server
-	long SNR;
-	uint8_t message[128] = {0x00}; // MSG size is 128 bytes for rx
-	uint8_t messageLength = 0;
+	
+
+
 
 	// Regular message received, see SX1276 spec table 18
 	// Next statement could also be a "while" to combine several messages received
@@ -901,74 +865,6 @@ int receivePacket()
 			return (-2); // received a message
 		}
 #endif
-
-#if _LOCALSERVER == 1
-		// Or special case, we do not use a local server to receive
-		// and decode the server. We use buildPacket() to call decode
-		// and use statr[0] information to store decoded message
-
-		//DecodePayload: para 4.3.1 of Lora 1.1 Spec
-		// MHDR
-		//	1 byte			Payload[0]
-		// FHDR
-		// 	4 byte Dev Addr Payload[1-4]
-		// 	1 byte FCtrl  	Payload[5]
-		// 	2 bytes FCnt	Payload[6-7]
-		// 		= Optional 0 to 15 bytes Options
-		// FPort
-		//	1 bytes, 0x00	Payload[8]
-		// ------------
-		// +=9 BYTES HEADER
-		//
-		// FRMPayload
-		//	N bytes			(Payload )
-		//
-		// 4 bytes MIC trailer
-
-		int index = 0;
-		if ((index = inDecodes((char *)(LoraUp.payLoad + 1))) >= 0)
-		{
-
-			uint8_t DevAddr[4];
-			DevAddr[0] = LoraUp.payLoad[4];
-			DevAddr[1] = LoraUp.payLoad[3];
-			DevAddr[2] = LoraUp.payLoad[2];
-			DevAddr[3] = LoraUp.payLoad[1];
-			uint16_t frameCount = LoraUp.payLoad[7] * 256 + LoraUp.payLoad[6];
-
-#if DUSB >= 1
-			if ((debug >= 1) && (pdebug & P_RX))
-			{
-				dbgp(F("R receivePacket:: Ind="));
-				dbgp(index);
-				dbgp(F(", Len="));
-				dbgp(LoraUp.payLength);
-				dbgp(F(", A="));
-				for (int i = 0; i < 4; i++)
-				{
-					if (DevAddr[i] < 0x0F)
-						dbgp('0');
-					dbgp(DevAddr[i], HEX);
-					//dbgp(' ');
-				}
-
-				dbgp(F(", Msg="));
-				for (int i = 0; (i < statr[0].datal) && (i < 23); i++)
-				{
-					if (statr[0].data[i] < 0x0F)
-						dbgp('0');
-					dbgp(statr[0].data[i], HEX);
-					dbgp(' ');
-				}
-				dbgpl();
-			}
-		}
-		else if ((debug >= 2) && (pdebug & P_RX))
-		{
-			dbgpl(F("receivePacket:: No Index"));
-		}
-#endif //DUSB
-#endif // _LOCALSERVER
 
 		// Reset the message area
 		LoraUp.payLength = 0;

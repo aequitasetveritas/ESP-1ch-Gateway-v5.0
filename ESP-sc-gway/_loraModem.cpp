@@ -518,7 +518,7 @@ uint8_t receivePkt(uint8_t *payload)
     if (irqflags & IRQ_LORA_CRCERR_MASK)
     {
 #if DUSB>=1
-        if (( debug>=0) && ( pdebug & P_RADIO )) {
+        if (( debug > 0) && ( pdebug & P_RADIO )) {
 			dbgp(F("rxPkt:: Err CRC, ="));
 			SerialTime();
 			dbgpl();
@@ -548,7 +548,7 @@ uint8_t receivePkt(uint8_t *payload)
         cp_nb_rx_ok++;													// Receive OK statistics counter
 
 		if (readRegister(REG_FIFO_RX_CURRENT_ADDR) != readRegister(REG_FIFO_RX_BASE_AD)) {
-			if (( debug>=0 ) && ( pdebug & P_RADIO )) {
+			if (( debug > 0 ) && ( pdebug & P_RADIO )) {
 				dbgp(F("RX BASE <"));
 				dbgp(readRegister(REG_FIFO_RX_BASE_AD));
 				dbgp(F("> != RX CURRENT <"));
@@ -745,7 +745,7 @@ bool sendPkt(uint8_t *payLoad, uint8_t payLength)
 
 void loraWait(const uint32_t timestamp)
 {
-	uint32_t startMics = micros();						// Start of the loraWait function
+	// uint32_t startMics = micros();						// Start of the loraWait function
 	uint32_t tmst = timestamp;
 // XXX
 	int32_t adjust=0;
@@ -838,6 +838,8 @@ void loraWait(const uint32_t timestamp)
 void txLoraModem(uint8_t *payLoad, uint8_t payLength, uint32_t tmst, uint8_t sfTx,
 						uint8_t powe, uint32_t freq, uint8_t crc, uint8_t iiq, uint16_t bw)
 {
+	(void) crc;
+	
 #if DUSB>=2
 	if (debug>=1) {
 		// Make sure that all serial stuff is done before continuing
@@ -1024,7 +1026,9 @@ void rxLoraModem()
 	else {
 		// Set Continous Receive Mode, usefull if we stay on one SF
 		_state= S_RX;
-		if (_hop) dbgpl(F("rxLoraModem:: ERROR continuous receive in hop mode"));
+		if (_hop) {
+			dbgpl(F("rxLoraModem:: ERROR continuous receive in hop mode"))
+		}
 		opmode(OPMODE_RX);										// 0x80 | 0x05 (listen)
 	}
 	

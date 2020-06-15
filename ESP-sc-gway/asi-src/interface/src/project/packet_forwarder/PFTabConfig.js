@@ -120,7 +120,7 @@ function PFConfigForm(props) {
 
 
         </div>
-      :
+      :( settings.protocolo === 2 ? 
         <div>
          <TextValidator
           validators={['required', 'matchRegexp:^.{1,100}$']}
@@ -166,6 +166,43 @@ function PFConfigForm(props) {
             />
 
         </div>
+        :
+        <div>
+         <TextValidator
+          validators={['required', 'matchRegexp:^.{1,100}$']}
+          errorMessages={['Se requiere un host', '100 caracteres max']}
+          name="mqttHost"
+          label="Thingsboard MQTT Host"
+          className={classes.textField}
+          value={settings.mqttHost}
+          onChange={handleValueChange('mqttHost')}
+          margin="normal"
+          />
+
+           <TextValidator
+          validators={['required', 'isNumber', 'minNumber:1025', 'maxNumber:65535']}
+          errorMessages={['Es requerido', "Debe ser un número", "Debe ser mayor a 1024 ", "Debe ser menor a 65535"]}
+          name="mqttPort"
+          label="Port"
+          className={classes.textField}
+          value={settings.mqttPort}
+          onChange={handleValueChange('mqttPort')}
+          margin="normal"
+          />
+
+             <TextValidator
+              validators={['matchRegexp:^.{0,100}$']}
+              errorMessages={['Max 100 caracteres']}
+              name="mqttUser"
+              label="Thingsboard Access Token"
+              className={classes.textField}
+              value={settings.mqttUser}
+              onChange={handleValueChange('mqttUser')}
+              margin="normal"
+            />
+
+        </div>
+      )
       }
 
       <TextValidator
