@@ -128,7 +128,6 @@ unsigned long hopTime=0;
 unsigned long detTime=0;
 struct LoraUp LoraUp;
 struct LoraBuffer LoraDown;
-long txDelay= 0x00;
 
 volatile state_t _state=S_INIT;
 volatile uint8_t _event=0;
@@ -765,10 +764,13 @@ void loraWait(const uint32_t timestamp)
 #endif
 		break; // to avoid compiler error when DUSB==0
 	}
-	tmst = tmst + txDelay + adjust;						// tmst based on txDelay and spreading factor
-	uint32_t waitTime = tmst - micros();
+	tmst = tmst +  adjust;						// tmst based on txDelay and spreading factor
 
-	dbgp("waitTime "); dbgpl(waitTime);
+	dbgp("LORA WAIT tmst: "); dbgp(tmst);
+	dbgp(" micros: "); dbgpl(micros());
+	uint32_t waitTime = tmst - (uint32_t) micros();
+
+	//dbgp("waitTime "); dbgpl(waitTime);
 
 //	if (waitTime<0) { //uint32_t is never negative! If micros() is > tmst, waitTime assume a very big value and the app hangs
 	if (micros()>tmst) { // test if the tmst is in the past to avoid hangs
@@ -779,7 +781,7 @@ void loraWait(const uint32_t timestamp)
 	// For larger delay times we use delay() since that is for > 15ms
 	// This is the most efficient way
 	while (waitTime > 16000) {
-		delay(15);										// ms delay including yield, slightly shorter
+		delay(10);										// ms delay including yield, slightly shorter
 		waitTime= tmst - micros();
 	}
 	// The remaining wait time is less tan 15000 uSecs
@@ -1027,7 +1029,7 @@ void rxLoraModem()
 		// Set Continous Receive Mode, usefull if we stay on one SF
 		_state= S_RX;
 		if (_hop) {
-			dbgpl(F("rxLoraModem:: ERROR continuous receive in hop mode"))
+			dbgpl(F("rxLoraModem:: ERROR continuous receive in hop mode"));
 		}
 		opmode(OPMODE_RX);										// 0x80 | 0x05 (listen)
 	}

@@ -237,7 +237,7 @@
 //#define CFG_sx1272_radio
 
 // Serial Port speed
-#define _BAUDRATE 115200					// Works for debug messages to serial momitor
+#define _BAUDRATE 256000					// Works for debug messages to serial momitor
 
 // We can put the gateway in such a mode that it will (only) recognize
 // nodes that are put in a list of trusted nodes 

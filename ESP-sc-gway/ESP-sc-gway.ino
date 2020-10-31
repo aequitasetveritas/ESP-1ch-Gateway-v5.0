@@ -941,6 +941,16 @@ void sendstat()
 	return;
 } //sendstat
 
+
+time_t getTimeFunction(){
+	time_t time_ntp = time(nullptr);
+	if(time_ntp < 946684800){ // Año 2000
+		return 0;
+	}else{
+		return time(nullptr);
+	}
+	
+}
 // ============================================================================
 // MAIN PROGRAM CODE (SETUP AND LOOP)
 
@@ -1087,6 +1097,9 @@ void setup()
 
 	//lcd_line3(settings_mqtt_server());
 
+	setSyncProvider(getTimeFunction);  // set the external time provider
+    setSyncInterval(60 * 1);         // set the number of seconds between re-sync
+
 	dbgpl(F("--------------------------------------"));
 } //setup
 
@@ -1115,6 +1128,7 @@ void loop()
 	
 	int packetSize;
 	uint32_t nowSeconds = now();
+
 	static bool udpInit = false; // Flags para inicializar UDP y Time.
 	static bool timeInit = false;
 
@@ -1123,27 +1137,12 @@ void loop()
 
 	asi_loop(); //Interface Loop
 	stateMachine(); // do the state machine
+
+
+	//if(timeStatus() != timeSet){
+	//	setSyncProvider(getTimeFunction); // para forzar re-sync
 	
-	// ######################## UDP Init ####################################################
-	if (!udpInit && (protocolo == SEMTECH_PF_UDP) && (backbone == BACKBONE_WIFI))
-	{
-		if (WiFi.status() == WL_CONNECTED)
-		{
-			if (!WiFi.hostByName(NTP_TIMESERVER, ntpServer)) // Get IP address of Timeserver
-			{
-				die("Setup:: ERROR hostByName NTP");
-			};
-			delay(100);
-	#ifdef _TTNSERVER
-			if (!WiFi.hostByName(_TTNSERVER, ttnServer)) // Use DNS to get server IP once
-			{
-				die("Setup:: ERROR hostByName TTN");
-			};
-			delay(100);
-	#endif
-			udpInit = true;
-		}
-	}
+	//}
 
 	// Cambiar el cliente para mqtt
 	/* Todo la configuracion gprs pasa por aca */
@@ -1189,19 +1188,17 @@ void loop()
 	else if (backbone == BACKBONE_WIFI)
 	{
 		mqtt_client.setClient(espClient);
-		if ((!timeInit) && (WiFi.status() == WL_CONNECTED))
-		{
-			// Init time
-			time_t newTime;
-			newTime = (time_t)getNtpTime();
-			if (newTime != 0)
-			{
-				setTime(newTime);
-				timeInit = true;
-			}
-		}
+		// if ((!timeInit) && (WiFi.status() == WL_CONNECTED))
+		// {
+		// 	// Init time
+		// 	time_t newTime;
+		// 	newTime = (time_t)getNtpTime();
+			
+		// 		setTime(newTime);
+		// 		timeInit = true;
+			
+		// }
 	}
-
 
 	if (protocolo == MQTTBRIDGE_TCP)
 	{
@@ -1211,7 +1208,7 @@ void loop()
 			dbgp("mqtt_down ");
 			dbgpl(_state);
 			mqtt_down_flag = 0;
-			_state = S_TX;
+			//_state = S_TX;
 		}
 		//yield();
 	}
@@ -1268,46 +1265,7 @@ void loop()
 	{
 		return;
 	}
-	else{
-		// yield();
-	}
-
-	//################################################ DOWNSTREAM UDP ########################################
-	if ((protocolo == SEMTECH_PF_UDP) && (WiFi.status() == WL_CONNECTED))
-	{
-		while ((packetSize = Udp.parsePacket()) > 0)
-		{
-#if DUSB >= 2
-			dbgpl(F("loop:: readUdp calling"));
-#endif
-			// DOWNSTREAM
-			// Packet may be PKT_PUSH_ACK (0x01), PKT_PULL_ACK (0x03) or PKT_PULL_RESP (0x04)
-			// This command is found in byte 4 (buffer[3])
-			if (readUdp(packetSize) <= 0)
-			{
-#if DUSB >= 1
-				if ((debug > 0) && (pdebug & P_MAIN))
-					dbgpl(F("M readUDP error"));
-#endif
-				break;
-			}
-			// Now we know we succesfully received message from host
-			else
-			{
-				//_event=1;								// Could be done double if more messages received
-			}
-		}
-	}
-
-
-	// ########################## END LAN Reconect ##################################################
-
-	// yield(); // XXX 26/12/2017
-
-	// ##################################################### Stat ############################################
-
-	// stat PUSH_DATA message (*2, par. 4)
-	//
+	
 
 	if ((nowSeconds - statTime) >= settings_stats_interval())
 	{ // Wake up every xx seconds
@@ -1328,69 +1286,8 @@ void loop()
 			mqtt_sendStat();
 		}
 
-#if DUSB >= 1
-		if ((debug >= 1) && (pdebug & P_MAIN))
-		{
-			dbgp(F("M STAT:: ..."));
-			Serial.flush();
-		}
-		if ((debug >= 1) && (pdebug & P_MAIN))
-		{
-			dbgpl(F(" done"));
-			if (debug >= 2)
-				Serial.flush();
-		}
-#endif
-
-		return; // End loop()
+		return;
 	}
-
-
-	if (protocolo == SEMTECH_PF_UDP)
-	{
-		// PULL Data #################################################
-		// send PULL_DATA message (*2, par. 4)
-		//
-		nowSeconds = now();
-		if ((nowSeconds - pulltime) >= _PULL_INTERVAL)
-		{ // Wake up every xx seconds
-#if DUSB >= 1
-			if ((debug >= 2) && (pdebug & P_MAIN))
-			{
-				dbgpl(F("M PULL"));
-				if (debug >= 1)
-					Serial.flush();
-			}
-#endif
-			pullData(); // Send PULL_DATA message to server
-			startReceiver();
-			pulltime = nowSeconds;
-		}
-	}
-	else
-	{
-		// MQTT tiene ping propio
-	}
-
-	// If we do our own NTP handling (advisable)
-	// We do not use the timer interrupt but use the timing
-	// of the loop() itself which is better for SPI
-#if NTP_INTR == 0
-	// Set the time in a manual way. Do not use setSyncProvider
-	// as this function may collide with SPI and other interrupts
-	//yield(); // 26/12/2017
-	nowSeconds = now();
-	if (nowSeconds - ntptimer >= _NTP_INTERVAL)
-	{
-		timeInit = false; // Setear el flag para forzar resync en el siguiente loop
-		/*yield();
-		time_t newTime;
-		newTime = (time_t)getNtpTime();
-		if (newTime != 0)
-			setTime(newTime);*/
-		ntptimer = nowSeconds;
-	}
-#endif
 
 	if (protocolo == MQTTBRIDGE_TCP || protocolo == MODO_AGROTOOLS)
 	{
@@ -1398,7 +1295,7 @@ void loop()
 		// Reconectar si estoy fuera.
 		static uint32_t mqtt_loopwt = 0; // MQTT Loop Watchdog Timer
 		
-		if(((millis() - mqtt_loopwt) > 50)){
+		if(((millis() - mqtt_loopwt) > 5)){
 			mqtt_loopwt = millis();
 
 			modemWakeup();
@@ -1433,6 +1330,7 @@ void loop()
 		ESP.reset();
 		return;
 	}
+
 
 	/* Cada 15 segundos desde el ultimo paquete reiniciar lora */
 	static uint32_t s;
@@ -1539,6 +1437,8 @@ void mqtt_callback(char *topic, byte *payload, unsigned int length)
 	dbgp(topic);
 	dbgp("] Length ");
 	dbgp(length);
+	dbgp(" micros ");
+	dbgp(micros());
 	dbgpl();
 
 	gw_DownlinkFrame dm = gw_DownlinkFrame_init_zero;
@@ -1713,6 +1613,8 @@ void mqtt_sendStat()
 
 	gw_GatewayStats statsMsg = gw_GatewayStats_init_zero;
 
+	uint32_t t;
+	dbgpl("NOW()"); dbgpl(now());
 	statsMsg.gateway_id.funcs.encode = pb_set_gateway_id;
 	statsMsg.ip.funcs.encode = pb_set_ip;
 	statsMsg.has_time = true;
@@ -1721,7 +1623,7 @@ void mqtt_sendStat()
 	statsMsg.has_location = true;
 	statsMsg.location.source = common_LocationSource_CONFIG;
 	statsMsg.location.altitude = 0;
-	statsMsg.location.latitude = -35.1684698;
+	statsMsg.location.latitude = -35.1684697;
 	statsMsg.location.longitude = -59.0927072;
 
 	statsMsg.config_version.funcs.encode = pb_set_config_version;

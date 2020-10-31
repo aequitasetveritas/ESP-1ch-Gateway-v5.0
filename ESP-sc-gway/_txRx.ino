@@ -487,6 +487,8 @@ int buildPacket(uint32_t tmst, uint8_t *buff_up, struct LoraUp up_packet, bool i
 	}
 #endif //_LOCALSERVER
 	statr[0].tmst = now();
+
+	
 	statr[0].ch = ifreq;
 	statr[0].prssi = prssi - rssicorr;
 #if RSSI == 1
@@ -810,7 +812,8 @@ int receivePacket()
 	// TODO: tmst can jump if micros() overflow.
 	uint32_t tmst = (uint32_t)micros(); // Only microseconds, rollover in 5X minutes
 	//lastTmst = tmst;								// Following/according to spec
-
+	dbgp("RX tmst ");dbgpl(tmst);
+	
 	LoraUp.rx_local_timestamp = tmst;
 	// Handle the physical data read from LoraUp
 	if (LoraUp.payLength > 0)

@@ -1,4 +1,5 @@
 #include <NTPSettingsService.h>
+#include <TimeLib.h>
 
 NTPSettingsService::NTPSettingsService(AsyncWebServer* server, FS* fs, SecurityManager* securityManager) :
     AdminSettingsService(server, fs, securityManager, NTP_SETTINGS_SERVICE_PATH, NTP_SETTINGS_FILE) {
@@ -43,6 +44,9 @@ void NTPSettingsService::writeToJsonObject(JsonObject& root) {
 
 void NTPSettingsService::onConfigUpdated() {
   _reconfigureNTP = true;
+}
+void NTPSettingsService::receivedNTPtime(){
+  setTime(time(nullptr));
 }
 
 #ifdef ESP32
