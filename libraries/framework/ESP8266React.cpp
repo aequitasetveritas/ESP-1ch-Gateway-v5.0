@@ -44,6 +44,10 @@ ESP8266React::ESP8266React(AsyncWebServer* server, FS* fs) :
   server->serveStatic("/fonts/", SPIFFS, "/www/fonts/");
   server->serveStatic("/app/", SPIFFS, "/www/app/");
   server->serveStatic("/favicon.ico", SPIFFS, "/www/favicon.ico");
+  server->serveStatic("/img/", SPIFFS, "/www/img/");
+  server->serveStatic("/plugins/", SPIFFS, "/www/plugins/");
+  server->serveStatic("/panel.json", SPIFFS, "/www/panel.json");
+  server->serveStatic("/sensores", SPIFFS, "/www/sensores.html");
   // Serving all other get requests with "/www/index.htm"
   // OPTIONS get a straight up 200 response
   server->onNotFound([](AsyncWebServerRequest* request) {

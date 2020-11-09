@@ -1175,7 +1175,7 @@ void initLoraModem()
 		dbgpl();
 		Serial.flush();
 #endif
-		die("");												// Maybe first try another kind of receiver
+		die("NO HAY CONEXION CON LORA CHIP");												// Maybe first try another kind of receiver
     }
 	// If we are here, the chip is recognized successfully
 	

@@ -850,11 +850,11 @@ int receivePacket()
 		}
 		else if (proto == SEMTECH_PF_UDP)
 		{
-			Serial.write((char*)buff_up, build_index);
-			if (!sendUdp(ttnServer, _TTNPORT, buff_up, build_index))
-			{
-				return (-1); // received a message
-			}
+			// Serial.write((char*)buff_up, build_index);
+			// if (!sendUdp(ttnServer, _TTNPORT, buff_up, build_index))
+			// {
+			// 	return (-1); // received a message
+			// }
 		}else if( proto == MODO_AGROTOOLS){
 			mqtt_sendTBPacket(LoraUp);
 		}

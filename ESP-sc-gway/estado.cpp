@@ -1,10 +1,17 @@
 #include "estado.h"
+#include <stdint.h>
+
 
 struct estado{
     bool connGprs;
     bool connRed;
     bool connMqttHost;
 };
+
+
+
+
+struct sensores gbl_sensores;
 
 static struct estado E;
 

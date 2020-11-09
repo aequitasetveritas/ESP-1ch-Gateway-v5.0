@@ -5,6 +5,7 @@
 #include <ESP8266React.h>
 #include "gprsSettings.h"
 #include "gprsStatus.h"
+#include "sensoresStatus.h"
 
 #include <FS.h>
 
@@ -17,7 +18,7 @@ LoraSettings loraSettings = LoraSettings(&server, &SPIFFS, esp8266React.getSecur
 PFSettings pfSettings = PFSettings(&server, &SPIFFS, esp8266React.getSecurityManager());
 GprsSettings gprsSettings = GprsSettings(&server, &SPIFFS, esp8266React.getSecurityManager());
 GprsStatus gprsStatus = GprsStatus(&server,esp8266React.getSecurityManager());
-
+SensoresStatus sensoresStatus = SensoresStatus(&server,esp8266React.getSecurityManager());
 
 void asi_begin() {
 #ifdef ESP32
@@ -34,7 +35,7 @@ void asi_begin() {
   loraSettings.begin();
   pfSettings.begin();
   gprsSettings.begin();
-
+  
   // start the server
   server.begin();
 }

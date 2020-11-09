@@ -620,7 +620,14 @@ void stateMachine()
 				//	IRQ_LORA_CRCERR_MASK ));
 				writeRegister(REG_IRQ_FLAGS, (uint8_t) 0xFF);
 				
-				_state = S_SCAN;
+				// POSIBLE BUG?????
+				//_state = S_SCAN;
+
+				///
+							
+						    initLoraModem();
+							rxLoraModem();
+							_state = S_RX;
 				break;
 			}
 #if DUSB>=1

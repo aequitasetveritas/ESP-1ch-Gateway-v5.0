@@ -4,7 +4,7 @@
     "stPort":1700,
     "statInterval":60,
     "keepAlive":15,
-    "mqttHost":"mqtt.flespi.io",
+    "mqttHost":"agrotools.qts-ar.com.ar",
     "mqttPort":1883,
     "mqttUser":"",
     "mqttPass":""
