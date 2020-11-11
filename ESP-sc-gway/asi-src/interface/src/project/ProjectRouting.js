@@ -16,9 +16,9 @@ class ProjectRouting extends Component {
         {
           /*
           * Add your project page routing below.
+            <AuthenticatedRoute exact path={`/${PROJECT_PATH}/demo/*`} component={DemoProject} />
           */
         }
-        <AuthenticatedRoute exact path={`/${PROJECT_PATH}/demo/*`} component={DemoProject} />
         <AuthenticatedRoute exact path={`/${PROJECT_PATH}/lora/*`} component={LoraSection} />
         <AuthenticatedRoute exact path={`/${PROJECT_PATH}/pf/*`} component={PFSection} />
         <AuthenticatedRoute exact path={`/${PROJECT_PATH}/gprs/*`} component={GPRSSection} />
@@ -29,7 +29,7 @@ class ProjectRouting extends Component {
           */
         }
 
-        <Redirect to={`/${PROJECT_PATH}/demo/`} />
+        <Redirect to={`/${PROJECT_PATH}/lora/`} />
       </Switch>
     )
   }

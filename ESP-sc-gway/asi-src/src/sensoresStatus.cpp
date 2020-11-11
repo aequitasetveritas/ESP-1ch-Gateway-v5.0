@@ -1,5 +1,6 @@
 #include "sensoresStatus.h"
 #include "../../estado.h"
+#include <TimeLib.h>
 
 SensoresStatus::SensoresStatus(AsyncWebServer* server, SecurityManager* securityManager) {
   server->on(SENSORES_STATUS_SERVICE_PATH,
@@ -19,9 +20,9 @@ void SensoresStatus::sensoresStatus(AsyncWebServerRequest* request) {
   JsonObject root = response->getRoot();
 
   // grab the current instant in unix seconds
-  time_t now = time(nullptr);
+  time_t ahora = now();
 
-  root["time_utc"] = toISOString(gmtime(&now), false);
+  root["time_utc"] = toISOString(gmtime(&ahora), false);
   root["latitud"] = ((float)gbl_sensores.latitud - 90000000.0) / 1000000.0;
   root["longitud"] = ((float)gbl_sensores.longitud - 180000000.0) / 1000000.0;
   root["temperatura"] = ((float)(gbl_sensores.temperatura) - 27315) / 100.0;

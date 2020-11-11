@@ -27,6 +27,7 @@
 #include <Wire.h>
 #include <Adafruit_BMP280.h>
 #include <Adafruit_AM2315.h>
+#include <RTClib.h>
 
 // Local include files
 #include "_loraModem.h"
@@ -94,6 +95,7 @@ extern "C"
 //
 Adafruit_BMP280 bmp;
 Adafruit_AM2315 am2315;
+RTC_DS3231 rtc;
 
 // ----------- Declaration of vars --------------
 uint8_t debug = 1;	   // Debug level! 0 is no msgs, 1 normal, 2 extensive
@@ -250,20 +252,31 @@ void ftoa(float f, char *val, int p)
 time_t getTimeFunction()
 {
 	time_t time_ntp = time(nullptr);
-	if (time_ntp < 946684800)
-	{ // Año 2000
-		return 0;
+
+	DateTime ahora = rtc.now();
+	time_t time_rtc = ahora.unixtime();
+
+	if (time_rtc < 1577836800)
+	{ // Año 2020
+		// El RTC no esta ajustado
+		if(time_ntp > 1577836800){
+			// Asumo NTP ajustado -> Ajustar RTC
+			rtc.adjust(DateTime(time_ntp));
+			return time_ntp;
+		}else{
+			// El ntp tampoco esta ajustado
+			return 0;
+		}
 	}
 	else
 	{
 		// Tiempo Valido
-		time_t n = time(nullptr);
 		if(time_sync == false){
-			statr[0].tmst = n;
+			statr[0].tmst = time_rtc;
 		}
 
 		time_sync = true;
-		return n;
+		return time_rtc;
 	}
 }
 // ============================================================================
@@ -450,6 +463,14 @@ void setup()
 					Adafruit_BMP280::FILTER_X16,	  /* Filtering. */
 					Adafruit_BMP280::STANDBY_MS_500); /* Standby time. */
 
+
+	if (! rtc.begin()) {
+		Serial.println("Couldn't find RTC");
+		wdt_enable(WDTO_8S);
+		while (1)
+			;
+  	}
+
 	dbgpl(F("--------------------------------------"));
 } //setup
 
@@ -501,33 +522,12 @@ void loop()
 				setEConnGprs(true);
 			}
 		}
-		else
-		{
-			// Conectado -> Obtener el tiempo
-			/*if (!timeInit)
-			{
-				uint8_t res = modem.NTPServerSync();
-				if (res == 1)
-				{
-					String tiempo = modem.getGSMDateTime(DATE_FULL);
-					yield();
-					// lcd_line3(tiempo.c_str());
-					timeInit = true;
-					// 13/09/11,20:23:25+32
-					uint8_t ano, mes, dia, hora, minu, segu;
-					//int res = sscanf(ti empo.c_str(),"%d/%d/%d,%d:%d:%d",&ano,&mes,&dia,&hora,&minu,&segu);
-					//if(res == 6){
-					//	setTime(hora,minu,segu,dia,mes,ano);
-
-					//}
-				}
-			}*/
-		}
 	}
 	else if (backbone == BACKBONE_WIFI)
 	{
 		mqtt_client.setClient(espClient);
 	}
+
 
 	if (protocolo == MQTTBRIDGE_TCP)
 	{
@@ -1015,9 +1015,9 @@ int extension_get_data()
 	// tension a centesimas de volts.
 	gbl_sensores.tension = (uint16_t)((float)gbl_sensores.tension * TENSION_CAL);
 	// direccion a grados
-	gbl_sensores.direccion = ((gbl_sensores.direccion - DIRECCION_MIN) > 1024 ? DIRECCION_MIN : (gbl_sensores.direccion - DIRECCION_MIN) ) * 360 / (DIRECCION_MAX - DIRECCION_MIN)  ; //(uint16)((float)gbl_sensores.direccion * DIRECCION_CAL);
+	gbl_sensores.direccion = (((gbl_sensores.direccion - DIRECCION_MIN) > 1024) ? 0 : (gbl_sensores.direccion - DIRECCION_MIN) ) * 360 / (DIRECCION_MAX - DIRECCION_MIN)  ; //(uint16)((float)gbl_sensores.direccion * DIRECCION_CAL);
 	// velocidad a decimetros por segundo
-	gbl_sensores.velocidad = ((gbl_sensores.velocidad - VELOCIDAD_MIN) > 1024 ? VELOCIDAD_MIN : (gbl_sensores.velocidad - DIRECCION_MIN) ) * 3000 / (VELOCIDAD_MAX - VELOCIDAD_MIN)  ; //(uint16)((float)gbl_sensores.direccion * DIRECCION_CAL);
+	gbl_sensores.velocidad = (((gbl_sensores.velocidad - VELOCIDAD_MIN) > 1024) ? 0 : (gbl_sensores.velocidad - VELOCIDAD_MIN) ) * 3000 / (VELOCIDAD_MAX - VELOCIDAD_MIN)  ; //(uint16)((float)gbl_sensores.direccion * DIRECCION_CAL);
 
 	float presion_f = bmp.readPressure();
 	float temperatura_f, humedad_f;
@@ -1043,7 +1043,7 @@ int sensors_json(char *b){
 			((float)gbl_sensores.temperatura - 27315) / 100.0,
 			gbl_sensores.humedad / 100.0,
 			gbl_sensores.presion / 10.0,
-			gbl_sensores.velocidad,
+			gbl_sensores.velocidad / 100.0,
 			gbl_sensores.direccion,
 			gbl_sensores.pulsos,
 			((float)gbl_sensores.tension) / 100.0
@@ -1081,8 +1081,12 @@ void mqtt_sendStat()
 	statsMsg.has_location = true;
 	statsMsg.location.source = common_LocationSource_CONFIG;
 	statsMsg.location.altitude = 0;
-	statsMsg.location.latitude = -35.1684697;
-	statsMsg.location.longitude = -59.0927072;
+
+	double latitud = ((float)gbl_sensores.latitud - 90000000.0) / 1000000.0;
+	double longitud = ((float)gbl_sensores.longitud - 180000000.0) / 1000000.0;
+
+	statsMsg.location.latitude = latitud;
+	statsMsg.location.longitude = longitud;
 
 	statsMsg.config_version.funcs.encode = pb_set_config_version;
 	statsMsg.rx_packets_received = cp_nb_rx_rcv;
@@ -1136,13 +1140,20 @@ void mqtt_sendUplink(struct LoraUp up_packet)
 	upMsg.rx_info.time.nanos = 0;
 	upMsg.rx_info.time.seconds = now();
 	upMsg.rx_info.has_time_since_gps_epoch = false;
-	//upMsg.rx_info.rssi = up_packet.prssi;
-	//upMsg.rx_info.lora_snr = up_packet.snr;
+	// OJO
+	upMsg.rx_info.rssi = up_packet.prssi;
+	upMsg.rx_info.lora_snr = up_packet.snr;
+	
 	upMsg.rx_info.channel = 1;
 
 	upMsg.rx_info.location.source = common_LocationSource_CONFIG;
-	upMsg.rx_info.location.latitude = -35.1684698;
-	upMsg.rx_info.location.longitude = -59.0927072;
+	
+	double latitud = ((float)gbl_sensores.latitud - 90000000.0) / 1000000.0;
+	double longitud = ((float)gbl_sensores.longitud - 180000000.0) / 1000000.0;
+
+	upMsg.rx_info.location.latitude = latitud;
+	upMsg.rx_info.location.longitude = longitud;
+
 	upMsg.rx_info.context.funcs.encode = pb_set_timing_context;
 	upMsg.rx_info.fine_timestamp_type = gw_FineTimestampType_NONE;
 	upMsg.rx_info.which_fine_timestamp = gw_UplinkRXInfo_plain_fine_timestamp_tag;
