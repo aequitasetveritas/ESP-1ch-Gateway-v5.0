@@ -1,11 +1,11 @@
 #ifndef MACRO_HELPERS
 #define MACRO_HELPERS
 
-#define MAC 0x6884
+#define MAC 0x00fc
 
 
 #if MAC == 0x00fc
-#define TENSION_CAL (5.206)
+#define TENSION_CAL (5.1702)
 #define VELOCIDAD_MIN (186)
 #define VELOCIDAD_MAX (941)
 #define DIRECCION_MIN (186)

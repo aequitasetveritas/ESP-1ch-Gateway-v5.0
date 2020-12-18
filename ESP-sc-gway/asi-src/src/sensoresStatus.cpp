@@ -28,7 +28,7 @@ void SensoresStatus::sensoresStatus(AsyncWebServerRequest* request) {
   root["temperatura"] = ((float)(gbl_sensores.temperatura) - 27315) / 100.0;
   root["humedad"] = (float)(gbl_sensores.humedad) / 100.0;
   root["presion"] = (float)(gbl_sensores.presion) / 10.0;
-  root["velocidad"] = gbl_sensores.velocidad;
+  root["velocidad"] = gbl_sensores.velocidad / 27.777777777 ; // a km/h
   root["direccion"] = gbl_sensores.direccion;
   root["pulsos"] = gbl_sensores.pulsos;
   root["tension"] = ((float)gbl_sensores.tension) / 100.0;

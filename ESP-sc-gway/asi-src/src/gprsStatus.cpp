@@ -18,7 +18,9 @@ void GprsStatus::gprsStatus(AsyncWebServerRequest* request) {
   // only provide enabled/disabled status for now
   root["connGprs"] = getEConnGprs();
   root["connRed"] = getEConnRed();
-
+  root["up"] = getUpPackets();
+  root["dw"] = getDownPackets();
+  root["connBroker"] = getBrokerConn();
   // the current time in UTC
   //root["time_utc"] = toISOString(gmtime(&now), false);
 

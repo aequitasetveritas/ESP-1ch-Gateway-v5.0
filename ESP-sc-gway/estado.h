@@ -24,5 +24,8 @@ bool getEConnGprs();
 bool getEConnRed();
 bool getEConnMqttHost();
 
+uint32_t getUpPackets();
+uint32_t getDownPackets();
+bool getBrokerConn();
 
 #endif

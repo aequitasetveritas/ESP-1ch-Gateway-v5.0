@@ -115,6 +115,7 @@ uint32_t cp_up_pkt_fwd;		// Number of packets forwarded
 uint32_t cp_up_pkt_up_fail; // Number of packets received but not forwarded
 uint32_t cp_dwnb;			// Downlink recibidos
 uint32_t cp_txnb;			// Paquetes TX
+bool broker_conn;
 
 uint8_t MAC_array[6];
 
@@ -248,6 +249,42 @@ void ftoa(float f, char *val, int p)
 	snprintf(val, 15, "%d.%d00000", int_part, int_dec_part);
 }
 
+void heartbeat(){
+	static uint32_t st;
+	static bool on;
+	uint32_t ct = millis();
+
+	if(getEConnMqttHost()){
+		// Encender cada 4 segs
+		if((ct - st) > 4000){
+			digitalWrite(5, HIGH);
+			st = ct;
+			on = true;
+		}
+
+		// 500 ms
+		if(on && ((ct - st) > 500)){
+			digitalWrite(5, LOW);
+			on = false;
+		}
+
+	}else{
+
+				// Encender cada 4 segs
+		if((ct - st) > 1000){
+			digitalWrite(5, HIGH);
+			st = ct;
+			on = true;
+		}
+
+		// 250 ms
+		if(on && ((ct - st) > 250)){
+			digitalWrite(5, LOW);
+			on = false;
+		}
+
+	}
+}
 
 time_t getTimeFunction()
 {
@@ -259,11 +296,14 @@ time_t getTimeFunction()
 	if (time_rtc < 1577836800)
 	{ // Año 2020
 		// El RTC no esta ajustado
-		if(time_ntp > 1577836800){
+		if (time_ntp > 1577836800)
+		{
 			// Asumo NTP ajustado -> Ajustar RTC
 			rtc.adjust(DateTime(time_ntp));
 			return time_ntp;
-		}else{
+		}
+		else
+		{
 			// El ntp tampoco esta ajustado
 			return 0;
 		}
@@ -271,7 +311,8 @@ time_t getTimeFunction()
 	else
 	{
 		// Tiempo Valido
-		if(time_sync == false){
+		if (time_sync == false)
+		{
 			statr[0].tmst = time_rtc;
 		}
 
@@ -341,6 +382,7 @@ void setup()
 
 	MAC_char[18] = 0;
 
+	WiFi.setOutputPower(20.5);
 	WiFi.macAddress(MAC_array);
 
 	sprintf(MAC_char, "%02x:%02x:%02x:%02x:%02x:%02x",
@@ -420,32 +462,34 @@ void setup()
 		mqtt_client.setCallback(mqtt_callback);
 	}
 
-
 	setSyncProvider(getTimeFunction); // set the external time provider
 	setSyncInterval(60 * 1);		  // set the number of seconds between re-sync
 
+#ifdef CON_EXTENSION
+
 	Wire.begin(2, 0);
 
-	for(int address = 1; address < 127; address++ ) 
-  {
- 
-    Wire.beginTransmission(address);
-    int error = Wire.endTransmission();
- 
-    if (error == 0)
-    {
-      Serial.print("I2C device found at address 0x");
-      if (address<16) 
-        Serial.print("0");
-      Serial.print(address,HEX);
-      Serial.println("  !");
-    }else if (error==4) 
-    {
-      Serial.print("Unknow error at address 0x");
-      if (address<16) 
-        Serial.print("0");
-      Serial.println(address,HEX);
-    }    
+	for (int address = 1; address < 127; address++)
+	{
+
+		Wire.beginTransmission(address);
+		int error = Wire.endTransmission();
+
+		if (error == 0)
+		{
+			Serial.print("I2C device found at address 0x");
+			if (address < 16)
+				Serial.print("0");
+			Serial.print(address, HEX);
+			Serial.println("  !");
+		}
+		else if (error == 4)
+		{
+			Serial.print("Unknow error at address 0x");
+			if (address < 16)
+				Serial.print("0");
+			Serial.println(address, HEX);
+		}
 	}
 
 	if (!bmp.begin(0x76))
@@ -463,27 +507,26 @@ void setup()
 					Adafruit_BMP280::FILTER_X16,	  /* Filtering. */
 					Adafruit_BMP280::STANDBY_MS_500); /* Standby time. */
 
-
-	if (! rtc.begin()) {
+	if (!rtc.begin())
+	{
 		Serial.println("Couldn't find RTC");
 		wdt_enable(WDTO_8S);
 		while (1)
 			;
-  	}
+	}
+
+#endif
 
 	dbgpl(F("--------------------------------------"));
 } //setup
 
-
-
 volatile uint8_t mqtt_down_flag = 0;
-
 
 void loop()
 {
 
 	int packetSize;
-	
+
 	static bool udpInit = false; // Flags para inicializar UDP y Time.
 	static bool timeInit = false;
 
@@ -498,8 +541,6 @@ void loop()
 		setSyncProvider(getTimeFunction); // para forzar re-sync
 	}
 	uint32_t nowSeconds = now(); // Despues de chequear timeStatus
-
-	
 
 	// Cambiar el cliente para mqtt
 	/* Todo la configuracion gprs pasa por aca */
@@ -527,7 +568,6 @@ void loop()
 	{
 		mqtt_client.setClient(espClient);
 	}
-
 
 	if (protocolo == MQTTBRIDGE_TCP)
 	{
@@ -633,17 +673,19 @@ void loop()
 		}
 	}
 
-	// Si en 15 min no he recibido nada reiniciar el sistema
-	if ((time_sync) && ((nowSeconds - statr[0].tmst) > (4*60)) ){
+	// Si en 10 min no he recibido nada reiniciar el sistema
+	if ((time_sync) && ((nowSeconds - statr[0].tmst) > (10 * 60)))
+	{
 		char mqtt_stat[200];
 
-		snprintf(mqtt_stat, 200, "{\"freeHeap\":%d,\"heapFrag\":%d,\"forwardFail\": %d,\"msg\":\"NoMsgReinit\",\"DIO0\":%d,\"event\":%d}", ESP.getFreeHeap(), ESP.getHeapFragmentation(), cp_up_pkt_up_fail, digitalRead(15)?1:0, _event);
+		snprintf(mqtt_stat, 200, "{\"freeHeap\":%d,\"heapFrag\":%d,\"forwardFail\": %d,\"msg\":\"NoMsgReinit\",\"DIO0\":%d,\"event\":%d}", ESP.getFreeHeap(), ESP.getHeapFragmentation(), cp_up_pkt_up_fail, digitalRead(15) ? 1 : 0, _event);
 
 		char topic[100];
 		snprintf(topic, 100, "gateway/%02x%02x%02xffff%02x%02x%02x/sisreinit", MAC_array[0], MAC_array[1], MAC_array[2], MAC_array[3], MAC_array[4], MAC_array[5]);
-		
+
 		modemWakeup();
-		if(!(mqtt_client.publish(topic, mqtt_stat, strlen(mqtt_stat)))){
+		if (!(mqtt_client.publish(topic, mqtt_stat, strlen(mqtt_stat))))
+		{
 			// Fallo
 		}
 		modemSleep();
@@ -661,25 +703,31 @@ void loop()
 		rxLoraModem();
 		_state = S_RX;
 
-
 		char mqtt_stat[200];
-		snprintf(mqtt_stat, 200, "{\"freeHeap\":%d,\"heapFrag\":%d,\"forwardFail\": %d,\"msg\":\"LORAReinit\",\"DIO0\":%d,\"event\":%d}", ESP.getFreeHeap(), ESP.getHeapFragmentation(), cp_up_pkt_up_fail, digitalRead(15)?1:0, _event);
+		snprintf(mqtt_stat, 200, "{\"freeHeap\":%d,\"heapFrag\":%d,\"forwardFail\": %d,\"msg\":\"LORAReinit\",\"DIO0\":%d,\"event\":%d}", ESP.getFreeHeap(), ESP.getHeapFragmentation(), cp_up_pkt_up_fail, digitalRead(15) ? 1 : 0, _event);
 		char topic[100];
 		snprintf(topic, 100, "gateway/%02x%02x%02xffff%02x%02x%02x/lorareinit", MAC_array[0], MAC_array[1], MAC_array[2], MAC_array[3], MAC_array[4], MAC_array[5]);
-		
+
 		modemWakeup();
-		if(!(mqtt_client.publish(topic, mqtt_stat, strlen(mqtt_stat)))){
+		if (!(mqtt_client.publish(topic, mqtt_stat, strlen(mqtt_stat))))
+		{
 			// Fallo
 		}
 		modemSleep();
 		s = millis();
 	}
 
+#ifdef CON_EXTENSION
 	static uint32_t sensores_timer;
-	if((millis() - sensores_timer) > 7000){
+	if ((millis() - sensores_timer) > 7000)
+	{
 		sensores_timer = millis();
 		extension_get_data();
 	}
+#endif
+
+//	heartbeat();
+
 } //loop
 
 void lora_settings_reconfig(int sf, int bw, uint32_t frec)
@@ -867,7 +915,20 @@ bool pb_set_gateway_id(pb_ostream_t *stream, const pb_field_t *field, void *cons
 
 bool pb_set_ip(pb_ostream_t *stream, const pb_field_t *field, void *const *arg)
 {
-	const char *str = "192.168.88.4"; // TODO
+	const char *str;
+	char ip[20];
+	memset(ip, 0, 20);
+	if (WiFi.localIP().isSet())
+	{
+		memcpy(ip, WiFi.localIP().toString().c_str(), WiFi.localIP().toString().length());
+		str = ip; //WiFi.localIP().toString().c_str();//
+	}
+	else
+	{
+		str = "192.168.88.4";
+	}
+
+	// // TODO
 
 	if (!pb_encode_tag_for_field(stream, field))
 		return false;
@@ -938,7 +999,7 @@ bool pb_set_downlink_id(pb_ostream_t *stream, const pb_field_t *field, void *con
 	return pb_encode_string(stream, (uint8_t *)str, downlink_size);
 }
 
-bool pb_temperatura(pb_ostream_t *stream, const pb_field_t *field, void *const *arg)
+bool pb_metadata_key(pb_ostream_t *stream, const pb_field_t *field, void *const *arg)
 {
 	//const char *str = "temperatura";
 	char *str = (char *)*arg;
@@ -948,9 +1009,20 @@ bool pb_temperatura(pb_ostream_t *stream, const pb_field_t *field, void *const *
 	return pb_encode_string(stream, (uint8_t *)str, strlen(str));
 }
 
-bool pb_temperatura_val(pb_ostream_t *stream, const pb_field_t *field, void *const *arg)
+bool pb_metadata_ip_val(pb_ostream_t *stream, const pb_field_t *field, void *const *arg)
 {
-	const char *str = "283";
+	const char *str;
+	char ip[20];
+	memset(ip, 0, 20);
+	if (WiFi.localIP().isSet())
+	{
+		memcpy(ip, WiFi.localIP().toString().c_str(), WiFi.localIP().toString().length());
+		str = ip; //WiFi.localIP().toString().c_str();//
+	}
+	else
+	{
+		str = "192.168.88.4";
+	}
 
 	if (!pb_encode_tag_for_field(stream, field))
 		return false;
@@ -965,13 +1037,13 @@ bool pb_gw_metadata(pb_ostream_t *stream, const pb_field_t *field, void *const *
 	gw_GatewayStats_MetaDataEntry msg = gw_GatewayStats_MetaDataEntry_init_zero;
 	gw_GatewayStats_MetaDataEntry msg1 = gw_GatewayStats_MetaDataEntry_init_zero;
 
-	msg.key.funcs.encode = pb_temperatura;
-	msg.key.arg = (void *)"humedad";
-	msg.value.funcs.encode = pb_temperatura_val;
+	msg.key.funcs.encode = pb_metadata_key;
+	msg.key.arg = (void *)"ip";
+	msg.value.funcs.encode = pb_metadata_ip_val;
 
-	msg1.key.funcs.encode = pb_temperatura;
-	msg1.key.arg = (void *)"temperatura";
-	msg1.value.funcs.encode = pb_temperatura_val;
+	// msg1.key.funcs.encode = pb_temperatura;
+	// msg1.key.arg = (void *)"temperatura";
+	// msg1.value.funcs.encode = pb_temperatura_val;
 
 	if (!pb_encode_tag_for_field(stream, field))
 		return false;
@@ -985,24 +1057,27 @@ int extension_get_data()
 	Wire.requestFrom(0x61, 20); // request 20 bytes from slave device #8
 
 	uint8_t buffer[20];
-	uint8_t i=0;
+	uint8_t i = 0;
 
 	while (Wire.available())
-	{						  // slave may send less than requested
+	{							   // slave may send less than requested
 		buffer[i++] = Wire.read(); // receive a byte as character
 	}
 
 	gbl_sensores.latitud = (buffer[3] << 24) | (buffer[2] << 16) | (buffer[1] << 8) | buffer[0];
 	gbl_sensores.longitud = (buffer[7] << 24) | (buffer[6] << 16) | (buffer[5] << 8) | buffer[4];
 
-//	uint16_t temperatura = (buffer[9] << 8) | buffer[8]; // Solo con ONE WIRE
-//	uint16_t humedad = (buffer[11] << 8) | buffer[10] // Solo con ONE WIRE
-	
+	//	uint16_t temperatura = (buffer[9] << 8) | buffer[8]; // Solo con ONE WIRE
+	//	uint16_t humedad = (buffer[11] << 8) | buffer[10] // Solo con ONE WIRE
+
 	/// EQUIPO ARMADO AL REVES!!!
-	if((MAC_array[5] == 0x84) && (MAC_array[4] == 0x68)){
+	if ((MAC_array[5] == 0x84) && (MAC_array[4] == 0x68))
+	{
 		gbl_sensores.direccion = (buffer[13] << 8) | buffer[12];
 		gbl_sensores.velocidad = (buffer[15] << 8) | buffer[14];
-	}else{
+	}
+	else
+	{
 		gbl_sensores.velocidad = (buffer[13] << 8) | buffer[12];
 		gbl_sensores.direccion = (buffer[15] << 8) | buffer[14];
 	}
@@ -1010,44 +1085,45 @@ int extension_get_data()
 	gbl_sensores.pulsos = (buffer[17] << 8) | buffer[16];
 	gbl_sensores.tension = (buffer[19] << 8) | buffer[18];
 
-
 	// Conversion de unidades ADC -> Magnitudes fisicas.
 	// tension a centesimas de volts.
 	gbl_sensores.tension = (uint16_t)((float)gbl_sensores.tension * TENSION_CAL);
 	// direccion a grados
-	gbl_sensores.direccion = (((gbl_sensores.direccion - DIRECCION_MIN) > 1024) ? 0 : (gbl_sensores.direccion - DIRECCION_MIN) ) * 360 / (DIRECCION_MAX - DIRECCION_MIN)  ; //(uint16)((float)gbl_sensores.direccion * DIRECCION_CAL);
-	// velocidad a decimetros por segundo
-	gbl_sensores.velocidad = (((gbl_sensores.velocidad - VELOCIDAD_MIN) > 1024) ? 0 : (gbl_sensores.velocidad - VELOCIDAD_MIN) ) * 3000 / (VELOCIDAD_MAX - VELOCIDAD_MIN)  ; //(uint16)((float)gbl_sensores.direccion * DIRECCION_CAL);
+	gbl_sensores.direccion = (gbl_sensores.direccion < DIRECCION_MIN) ? 0 : ((gbl_sensores.direccion - DIRECCION_MIN) * 360 / (DIRECCION_MAX - DIRECCION_MIN)); //(uint16)((float)gbl_sensores.direccion * DIRECCION_CAL);
+	// velocidad a centimetros por segundo
+	gbl_sensores.velocidad = (gbl_sensores.velocidad < VELOCIDAD_MIN) ? 0 : ((gbl_sensores.velocidad - VELOCIDAD_MIN) * 3000 / (VELOCIDAD_MAX - VELOCIDAD_MIN)); //(uint16)((float)gbl_sensores.direccion * DIRECCION_CAL);
 
 	float presion_f = bmp.readPressure();
 	float temperatura_f, humedad_f;
-	if(!am2315.readTemperatureAndHumidity(&temperatura_f, &humedad_f)){
+	if (!am2315.readTemperatureAndHumidity(&temperatura_f, &humedad_f))
+	{
 		temperatura_f = -273.15;
 		humedad_f = 0;
 
-		//No calcules 
-	}else{
+		//No calcules
+	}
+	else
+	{
 		gbl_sensores.temperatura = (uint16_t)(temperatura_f + 273.15) * 100;
-		gbl_sensores.humedad = (uint16_t) (humedad_f * 100);
+		gbl_sensores.humedad = (uint16_t)(humedad_f * 100);
 	}
 
 	gbl_sensores.presion = (uint16_t)(presion_f / 10.0);
-
 }
 
-int sensors_json(char *b){
+int sensors_json(char *b)
+{
 	//extension_get_data();
-	int n = snprintf(b, 200, "{\"latitud\":%6.2f, \"longitud\":%6.2f, \"temperatura\":%6.2f, \"humedad\":%6.2f, \"presion\":%6.1f, \"velocidad\":%d, \"direccion\":%d, \"pulsos\":%d, \"tension\":%5.2f}", 
-			((float)gbl_sensores.latitud - 90000000.0) / 1000000.0,
-			((float)gbl_sensores.longitud - 180000000.0) / 1000000.0,
-			((float)gbl_sensores.temperatura - 27315) / 100.0,
-			gbl_sensores.humedad / 100.0,
-			gbl_sensores.presion / 10.0,
-			gbl_sensores.velocidad / 100.0,
-			gbl_sensores.direccion,
-			gbl_sensores.pulsos,
-			((float)gbl_sensores.tension) / 100.0
-			);
+	int n = snprintf(b, 200, "{\"latitud\":%8.6f, \"longitud\":%8.6f, \"temperatura\":%6.2f, \"humedad\":%6.2f, \"presion\":%6.1f, \"velocidad\":%5.2f, \"direccion\":%d, \"pulsos\":%d, \"tension\":%5.2f}",
+					 ((float)gbl_sensores.latitud - 90000000.0) / 1000000.0,
+					 ((float)gbl_sensores.longitud - 180000000.0) / 1000000.0,
+					 ((float)gbl_sensores.temperatura - 27315) / 100.0,
+					 gbl_sensores.humedad / 100.0,
+					 gbl_sensores.presion / 10.0,
+					 gbl_sensores.velocidad != 0 ? gbl_sensores.velocidad / 27.777777777 : 0, // a km/h,
+					 gbl_sensores.direccion,
+					 gbl_sensores.pulsos,
+					 ((float)gbl_sensores.tension) / 100.0);
 
 	return n;
 }
@@ -1093,7 +1169,7 @@ void mqtt_sendStat()
 	statsMsg.rx_packets_received_ok = cp_nb_rx_ok;
 	statsMsg.tx_packets_received = cp_dwnb;
 	statsMsg.tx_packets_emitted = cp_txnb;
-	//statsMsg.meta_data.funcs.encode = pb_gw_metadata;
+	statsMsg.meta_data.funcs.encode = pb_gw_metadata;
 
 	uint8_t buffer[120];
 	pb_ostream_t stream = pb_ostream_from_buffer(buffer, sizeof(buffer));
@@ -1109,12 +1185,16 @@ void mqtt_sendStat()
 	// Stats Chirpstack
 	mqtt_client.publish(topic, buffer, stream.bytes_written);
 
+#ifdef CON_EXTENSION
 	// Sensores
 	snprintf(topic, 40, "gateway/%02x%02x%02xffff%02x%02x%02x/sensores", MAC_array[0], MAC_array[1], MAC_array[2], MAC_array[3], MAC_array[4], MAC_array[5]);
 
 	char sensores[200];
 	int n = sensors_json(sensores);
 	mqtt_client.publish(topic, sensores, n);
+
+#endif
+
 }
 
 void mqtt_sendUplink(struct LoraUp up_packet)
@@ -1143,11 +1223,11 @@ void mqtt_sendUplink(struct LoraUp up_packet)
 	// OJO
 	upMsg.rx_info.rssi = up_packet.prssi;
 	upMsg.rx_info.lora_snr = up_packet.snr;
-	
+
 	upMsg.rx_info.channel = 1;
 
 	upMsg.rx_info.location.source = common_LocationSource_CONFIG;
-	
+
 	double latitud = ((float)gbl_sensores.latitud - 90000000.0) / 1000000.0;
 	double longitud = ((float)gbl_sensores.longitud - 180000000.0) / 1000000.0;
 
