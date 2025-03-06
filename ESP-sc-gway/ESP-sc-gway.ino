@@ -726,7 +726,7 @@ void loop()
 	}
 #endif
 
-//	heartbeat();
+	heartbeat();
 
 } //loop
 

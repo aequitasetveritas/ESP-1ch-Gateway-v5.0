@@ -18,7 +18,7 @@
 #define DIRECCION_MAX (941)
 #endif
 
-//#define SerialOut 0
+#define SerialOut 0
 
 #ifdef SerialOut
 #define dbgp(...) Serial.print(__VA_ARGS__)
